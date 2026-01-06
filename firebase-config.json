@@ -1,0 +1,268 @@
+[
+  {
+    "id": "scandi",
+    "name": "Scandi Clean",
+    "description": "Minimalist elegance for modern homes",
+    "categories": [
+      "interior",
+      "kitchen",
+      "bedroom",
+      "bathroom"
+    ],
+    "icon": "sofa",
+    "prompt_modifier": "minimalist, white oak wood, neutral beige textiles, airy atmosphere",
+    "default_color_palette": "neutral",
+    "category_image_urls": {
+      "interior": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Fscandi.png?alt=media&token=31049a10-44fa-4d63-ac2f-eb779e9286cf",
+      "kitchen": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Fscandi_kitchen.png?alt=media&token=6d73616c-7e4c-45ce-9d6d-da88e8b51be1",
+      "bedroom": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Fscandi_bedroom.png?alt=media&token=8407012a-42be-430b-9c50-c76aa37e4d97",
+      "bathroom": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Fscandi_bathroom.png?alt=media&token=dfcc2f77-eb10-4328-ad3e-ad188529eeaf"
+    }
+  },
+  {
+    "id": "modern_luxe",
+    "name": "Modern Luxury",
+    "description": "Bold luxury meets contemporary design",
+    "categories": [
+      "interior",
+      "kitchen",
+      "bedroom",
+      "bathroom"
+    ],
+    "icon": "star",
+    "prompt_modifier": "high contrast, black marble accents, velvet furniture, dramatic lighting",
+    "default_color_palette": "monochrome",
+    "category_image_urls": {
+      "interior": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Fmodern_luxe.png?alt=media&token=f9f1ee0c-8c6b-4e29-9c0c-8923f7b0558e",
+      "kitchen": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Fmodernluxury_kitchen.png?alt=media&token=4de667d3-f0e4-472e-9d35-79078abd5597",
+      "bedroom": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Fmodernluxury_bedroom.png?alt=media&token=eed7fabd-c21f-4bfa-a90e-fe0dab8a5802",
+      "bathroom": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Fmodernluxury_bathroom.png?alt=media&token=460fad48-dfda-4699-a1e9-ad2642b88fb6"
+    }
+  },
+  {
+    "id": "japandi",
+    "name": "Japandi",
+    "description": "Zen minimalism meets Nordic simplicity",
+    "categories": [
+      "interior",
+      "bedroom"
+    ],
+    "icon": "sparkle",
+    "prompt_modifier": "zen minimalism, natural materials, muted earth tones, functional beauty",
+    "default_color_palette": "earth",
+    "category_image_urls": {
+      "interior": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Fjapandi.png?alt=media&token=dda5b061-cf25-4bca-a18b-a3058f0a2064",
+      "bedroom": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Fjapandi_bedroom.png?alt=media&token=70dbf92f-6646-4307-ac86-c64142f941ca"
+    }
+  },
+  {
+    "id": "midcentury",
+    "name": "Mid-Century",
+    "description": "Timeless retro sophistication",
+    "categories": [
+      "interior",
+      "bedroom"
+    ],
+    "icon": "chair",
+    "prompt_modifier": "warm wood tones, iconic furniture shapes, bold geometric patterns, retro colors",
+    "default_color_palette": "warm",
+    "category_image_urls": {
+      "interior": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Fmidcentury.png?alt=media&token=c62f5f1e-8dd4-46a0-a17b-c2e740744c08",
+      "bedroom": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Fmidcentury_bedroom.png?alt=media&token=19a8d3dc-f8a8-4db1-ab8a-21028cbfd4b1"
+    }
+  },
+  {
+    "id": "coastal",
+    "name": "Coastal Breeze",
+    "description": "Relaxed beach-inspired living",
+    "categories": [
+      "interior",
+      "kitchen",
+      "bedroom",
+      "bathroom"
+    ],
+    "icon": "leaf",
+    "prompt_modifier": "light blue tones, natural wicker, white linen, ocean-inspired decor",
+    "default_color_palette": "ocean",
+    "category_image_urls": {
+      "interior": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Fcoastal_interior.png?alt=media&token=1806be56-6ac4-427e-b439-cff6f07229d6",
+      "kitchen": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Fcoastal_kitchen.png?alt=media&token=12419b15-aa41-42fa-a415-a3432d85a9d2",
+      "bedroom": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Fcoastal_bedroom.png?alt=media&token=58bb37b9-7982-4095-96aa-5b8db585fbc3",
+      "bathroom": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Fcoastal_bathroom.png?alt=media&token=42c4c44d-7bb0-4355-81a7-eec3a1589804"
+    }
+  },
+  {
+    "id": "industrial",
+    "name": "Urban Industrial",
+    "description": "Raw urban character",
+    "categories": [
+      "interior",
+      "kitchen",
+      "bedroom"
+    ],
+    "icon": "building",
+    "prompt_modifier": "exposed brick, metal accents, leather furniture, Edison bulb lighting",
+    "default_color_palette": "monochrome",
+    "category_image_urls": {
+      "interior": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Findustrial_interior.png?alt=media&token=ee035449-0992-4aaa-a95b-cbdc37fe81f1",
+      "kitchen": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Findustrial_kitchen.png?alt=media&token=36235b3c-a323-4c19-9d87-e3d6a91d0eb2",
+      "bedroom": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Findustrial_bedroom.png?alt=media&token=7e614102-6c34-4fea-8811-61fd247a2c75"
+    }
+  },
+  {
+    "id": "farmhouse",
+    "name": "Modern Farmhouse",
+    "description": "Cozy rustic charm",
+    "categories": [
+      "interior",
+      "bedroom"
+    ],
+    "icon": "house",
+    "prompt_modifier": "shiplap walls, rustic wood, neutral palette, cozy textiles",
+    "default_color_palette": "warm",
+    "category_image_urls": {
+      "interior": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Ffarmhouse_interior.png?alt=media&token=df887b9b-3e9d-4f56-be02-e89c728ea518",
+      "bedroom": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Ffarmhouse_bedroom.png?alt=media&token=29c1edaa-8848-4c51-bc6a-6b104af8d370"
+    }
+  },
+  {
+    "id": "bohemian",
+    "name": "Boho Chic",
+    "description": "Eclectic free-spirited style",
+    "categories": [
+      "interior",
+      "bedroom"
+    ],
+    "icon": "leaf",
+    "prompt_modifier": "layered textiles, macrame, plants, warm earthy colors, eclectic mix",
+    "default_color_palette": "warm",
+    "category_image_urls": {
+      "interior": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Fboho_interior.png?alt=media&token=d7b8292b-abca-482a-a567-91146b60997c",
+      "bedroom": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Fboho_bedroom.png?alt=media&token=ecc714bf-94a6-4270-a89c-de1423333a63"
+    }
+  },
+  {
+    "id": "modern_garden",
+    "name": "Modern Garden",
+    "description": "Contemporary outdoor elegance",
+    "categories": [
+      "garden"
+    ],
+    "icon": "leaf",
+    "prompt_modifier": "clean lines, geometric planters, minimalist landscaping",
+    "default_color_palette": "forest",
+    "category_image_urls": {
+      "garden": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Fmodern_garden.png?alt=media&token=aaf8e2bb-47fd-4f7f-8b14-59012be6f765"
+    }
+  },
+  {
+    "id": "cottage_garden",
+    "name": "Cottage Garden",
+    "description": "Romantic English countryside charm",
+    "categories": [
+      "garden"
+    ],
+    "icon": "leaf",
+    "prompt_modifier": "romantic florals, winding paths, lush greenery",
+    "default_color_palette": "pastel",
+    "category_image_urls": {
+      "garden": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Fcottage_garden.png?alt=media&token=680645bc-f7d9-456d-9330-b0e5438a0382"
+    }
+  },
+  {
+    "id": "declutter",
+    "name": "Declutter",
+    "description": "Clean up and organize your space",
+    "categories": [
+      "declutter"
+    ],
+    "icon": "sparkles",
+    "prompt_modifier": "organized, tidy, minimal clutter, clean surfaces, well-organized spaces, everything in its place",
+    "default_color_palette": "neutral",
+    "category_image_urls": {
+      "declutter": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Fdeclutter.png?alt=media&token=e1ff5dd7-6872-4bd3-b2e4-3e8895bdb7ff"
+    }
+  },
+  {
+    "id": "art_deco",
+    "name": "Art Deco",
+    "description": "Glamorous symmetry, geometric forms, luxurious materials.",
+    "categories": [
+      "interior",
+      "kitchen",
+      "bedroom",
+      "bathroom"
+    ],
+    "icon": "star",
+    "prompt_modifier": "Luxurious Art Deco interior design style, featuring highly polished chrome and brass accents, bold geometric patterns, rich velvet upholstery in jewel tones (emerald, sapphire, ruby), lacquered furniture, mirrored surfaces, sunburst motifs, stepped forms, dramatic lighting with elegant chandeliers",
+    "default_color_palette": "monochrome",
+    "category_image_urls": {
+      "interior": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Fart_deco.png?alt=media",
+      "kitchen": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Fart_deco_kitchen.png?alt=media",
+      "bedroom": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Fart_deco_bedroom.png?alt=media",
+      "bathroom": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Fart_deco_bathroom.png?alt=media"
+    }
+  },
+  {
+    "id": "mediterranean",
+    "name": "Mediterranean",
+    "description": "Sun-drenched, rustic charm with coastal serenity.",
+    "categories": [
+      "interior",
+      "kitchen",
+      "bedroom",
+      "bathroom",
+      "garden"
+    ],
+    "icon": "leaf",
+    "prompt_modifier": "Rough stucco walls, terracotta tiles, natural stone floors (travertine, marble), wrought iron details, warm earthy tones (terracotta, ochre, olive, deep blue), arched doorways and windows, exposed wooden beams, Mediterranean pottery, lush greenery, outdoor living spaces with bougainvillea",
+    "default_color_palette": "earth",
+    "category_image_urls": {
+      "interior": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Fmediterranean.png?alt=media",
+      "kitchen": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Fmediterranean_kitchen.png?alt=media",
+      "bedroom": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Fmediterranean_bedroom.png?alt=media",
+      "bathroom": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Fmediterranean_bathroom.png?alt=media",
+      "garden": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Fmediterranean_garden.png?alt=media"
+    }
+  },
+  {
+    "id": "minimalist_japanese",
+    "name": "Minimalist Japanese",
+    "description": "Serene simplicity, natural materials, tranquil spaces.",
+    "categories": [
+      "interior",
+      "kitchen",
+      "bedroom",
+      "bathroom"
+    ],
+    "icon": "leaf",
+    "prompt_modifier": "Light natural wood (maple, bamboo, cedar), shoji screens, tatami mats, natural linen and cotton textiles. Colors are soft whites, muted grays, beige, subtle greens, and natural wood tones. Textures emphasize smooth wood, delicate paper, and soft, natural fabrics. Diffused natural light, often filtered through shoji, creating a calm, serene atmosphere. Low-profile, simple-lined furniture, platform beds, floor cushions. Minimalist decor: a single bonsai, ikebana arrangement, or ceramic piece. Emphasis on open space, clean lines, and a meditative, harmonious environment.",
+    "default_color_palette": "neutral",
+    "category_image_urls": {
+      "interior": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Fminimalist_japanese.png?alt=media&token=126e0672-02b9-4fde-ad55-470f66ab240d",
+      "kitchen": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Fminimalist_japanese_kitchen.png?alt=media&token=a56fc5d6-f1d5-4b21-9a85-69841a66dc9c",
+      "bedroom": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Fminimalist_japanese_bedroom.png?alt=media&token=0f1e6802-b70f-4817-aae7-4a36c8438b16",
+      "bathroom": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Fminimalist_japanese_bathroom.png?alt=media&token=86cb319a-4c35-4577-8f0d-4358eb2d701d"
+    }
+  },
+  {
+    "id": "rustic_cabin",
+    "name": "Rustic Cabin",
+    "description": "Warm, rugged retreat with natural charm.",
+    "categories": [
+      "interior",
+      "kitchen",
+      "bedroom",
+      "bathroom"
+    ],
+    "icon": "house",
+    "prompt_modifier": "Rough-hewn log walls, stone fireplaces, and vaulted ceilings with exposed timber beams. Rich earthy color palette of deep forest greens, charcoal grays, warm browns, and cream accents. Abundant use of natural materials: reclaimed wood, stacked stone, genuine leather, wool, and wrought iron. Furniture is sturdy and oversized, featuring log construction, distressed wood, and plush, natural fabric upholstery. Soft, ambient lighting from antler chandeliers, rustic lanterns, and the glow of a crackling fireplace. Decor includes plaid textiles, faux fur throws, cast iron accents, vintage outdoor gear, and nature-inspired artwork, creating a cozy, rugged, and inviting atmosphere.",
+    "default_color_palette": "earth",
+    "category_image_urls": {
+      "interior": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Frustic_cabin.png?alt=media&token=4023ba3e-eda0-4950-bfa2-c175ff76919c",
+      "kitchen": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Frustic_cabin_kitchen.png?alt=media&token=f828c25c-e332-4ef7-9a96-b8a230bcbb3a",
+      "bedroom": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Frustic_cabin_bedroom.png?alt=media&token=b085d4ec-61bd-4c28-b5fb-449594440483",
+      "bathroom": "https://firebasestorage.googleapis.com/v0/b/stage-ai-e610c.firebasestorage.app/o/styles%2Frustic_cabin_bathroom.png?alt=media&token=2b7fb92a-2c81-4c69-bf96-a6a95ed3b952"
+    }
+  }
+]
