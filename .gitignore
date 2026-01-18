@@ -22,3 +22,7 @@ ENV/
 Thumbs.db
 
 IMAGES/
+**.jpg
+**.png
+
+
