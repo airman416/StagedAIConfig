@@ -4,15 +4,18 @@ Reimagine Interior Design Styles
 
 This script:
 1. Takes an image path as an argument
-2. Uses Gemini to identify 7 suitable interior design styles OR fill ideas
+2. Uses Gemini to identify styles (2 good) OR fill ideas (2 good + 1 silly)
 3. Generates reimagined versions of the original image
-4. Saves output to a date-stamped folder
+4. Saves output to a date-stamped folder:
+   - Regular mode: 1 original + 2 redesigns = 3 total
+   - Fill mode (-f): 1 original + 3 fills (2 good + 1 silly) = 4 total
 """
 
 import os
 import argparse
 import datetime
 import shutil
+import concurrent.futures
 from pathlib import Path
 from dotenv import load_dotenv
 from google import genai
@@ -30,9 +33,14 @@ def init_gemini():
     """Initialize Gemini client."""
     return genai.Client(api_key=GEMINI_API_KEY)
 
-def analyze_image(client, image_path):
+def analyze_image(client, image_path, num_styles=2):
     """
-    Analyze the image to identify 7 suitable interior design styles.
+    Analyze the image to identify suitable interior design styles.
+    
+    Args:
+        client: Gemini client
+        image_path: Path to source image
+        num_styles: Number of styles to identify (default 2, use 5 for carousel)
     """
     try:
         # Open image
@@ -41,16 +49,13 @@ def analyze_image(client, image_path):
         print(f"❌ Error opening image: {e}")
         return []
 
-    prompt = """
-    Analyze this interior design image. Identify 7 distinct interior design styles that would work remarkably well for this specific space, layout, and lighting.
+    prompt = f"""
+    Analyze this interior design image. Identify EXACTLY {num_styles} distinct interior design styles that would work remarkably well for this specific space, layout, and lighting.
     
-    Return ONLY a raw list of the 7 style names, one per line. 
-    Example format:
-    Modern Minimalist
-    Industrial Chic
-    Scandinavian
-    ...
+    CRITICAL: You MUST return exactly {num_styles} style names - no fewer.
+    Each style name must be SHORT - 2 to 3 words max (e.g. "Modern Minimalist", "Scandinavian", "Industrial Chic").
     
+    Return ONLY a raw list of the {num_styles} style names, one per line. 
     Do not include numbering, bullet points, or extra text.
     """
     
@@ -76,15 +81,16 @@ def analyze_image(client, image_path):
             if s:
                 clean_styles.append(s)
                 
-        return clean_styles[:7]
+        return clean_styles[:num_styles]
         
     except Exception as e:
         print(f"❌ Error analyzing image: {e}")
         return []
 
-def brainstorm_fill_ideas(client, image_path):
+def brainstorm_fill_ideas(client, image_path, num_ideas=3):
     """
-    Brainstorm creative and humorous ideas to fill the empty space.
+    Brainstorm creative ideas to fill the empty space.
+    Default: 2 good + 1 silly. For carousel (num_ideas=5): 4 good + 1 silly.
     """
     try:
         image = Image.open(image_path)
@@ -92,19 +98,22 @@ def brainstorm_fill_ideas(client, image_path):
         print(f"❌ Error opening image: {e}")
         return []
 
-    prompt = """
+    silly_count = 1
+    good_count = num_ideas - silly_count
+
+    prompt = f"""
     Analyze this interior design image, which likely contains empty space.
-    Brainstorm 7 creative, distinct, and potentially humorous or unexpected ways to fill this space with furniture, objects, lighting, and decor.
+    Brainstorm EXACTLY {num_ideas} creative and distinct ways to fill this space with furniture, objects, lighting, and decor.
     
-    The ideas should range from practical/stylish to whimsical/humorous.
+    CRITICAL: You MUST return exactly {num_ideas} ideas - no fewer.
+    AVOID CLICHES. DO NOT suggest "Reading Nook" or "Home Office" unless the space is clearly a library or study.
     
-    Return ONLY a raw list of the 7 ideas/themes, one per line.
-    Example format:
-    Cozy Reading Nook with a Giant Beanbag
-    Victorian Tea Room Setup
-    Indoor Jungle with Hammock
-    Sci-Fi Gamer Station
-    ...
+    Structure:
+    - {good_count} UNIQUE & STYLISH ideas: Focus on specific, distinct functions (e.g., "Japanese Tea Corner", "Vinyl Record Listening Station", "Mid-century Cocktail Lounge", "Yoga Sanctuary").
+    - {silly_count} CREATIVE/ABSURD idea(s): Pick from: "Lidl Grocery Store Entrance", "Airport Terminal", "Medieval Dungeon"
+    
+    Return ONLY a raw list of the {num_ideas} ideas, one per line. Good ideas first, absurd one(s) last.
+    Each idea must be SHORT - 2 to 3 words max.
     
     Do not include numbering, bullet points, or extra text.
     """
@@ -128,13 +137,13 @@ def brainstorm_fill_ideas(client, image_path):
             if s:
                 clean_ideas.append(s)
                 
-        return clean_ideas[:7]
+        return clean_ideas[:num_ideas]
         
     except Exception as e:
         print(f"❌ Error brainstorming: {e}")
         return []
 
-def reimagine_image(client, image_path, style_name, output_dir):
+def reimagine_image(client, image_path, style_name, output_dir, index=None):
     """
     Generate a reimagined version of the image in the specified style.
     """
@@ -149,8 +158,10 @@ def reimagine_image(client, image_path, style_name, output_dir):
     Reimagine this exact room with a DRAMATIC and BOLD transformation into the {style_name} interior design style.
     
     CRITICAL STRUCTURAL CONSTRAINTS (MUST FOLLOW):
-    - PRESERVE EXACTLY: The room layout, perspective, ceiling height, and ALL structural elements (walls, windows, doors, beams).
-    - DO NOT move walls, remove windows, change door placements, or alter the architecture.
+    - PRESERVE EXACTLY: The room layout, perspective, ceiling height, and ALL structural elements (walls, pillars, columns, windows, doors, beams).
+    - DO NOT move, resize, or alter any walls, pillars, or columns.
+    - DO NOT enlarge the room or change the spatial dimensions.
+    - DO NOT remove windows, change door placements, or alter the architecture in any way.
     
     DESIGN INSTRUCTIONS (BE DRAMATIC):
     - COMPLETELY TRANSFORM the interior atmosphere, furniture, and decor to fully embody {style_name}.
@@ -178,10 +189,11 @@ def reimagine_image(client, image_path, style_name, output_dir):
             if part.inline_data is not None:
                 img_data = part.inline_data.data
                 
-                # Create safe filename
+                # Create safe filename (index ensures uniqueness when styles have similar names)
                 safe_name = "".join(c for c in style_name if c.isalnum() or c in (' ', '_', '-')).strip()
                 safe_name = safe_name.replace(' ', '_').lower()
-                filename = f"{safe_name}.png"
+                prefix = f"{index}_" if index is not None else ""
+                filename = f"{prefix}{safe_name}.png"
                 filepath = os.path.join(output_dir, filename)
                 
                 with open(filepath, "wb") as f:
@@ -194,7 +206,7 @@ def reimagine_image(client, image_path, style_name, output_dir):
     except Exception as e:
         print(f"  ❌ Generation failed for {style_name}: {e}")
 
-def generate_fill_image(client, image_path, idea, output_dir):
+def generate_fill_image(client, image_path, idea, output_dir, index=None):
     """
     Generate an image with the space filled based on the idea.
     """
@@ -204,17 +216,46 @@ def generate_fill_image(client, image_path, idea, output_dir):
         print(f"❌ Error opening image: {e}")
         return
 
+    # Special handling for specific absurd ideas
+    if "Lidl Grocery Store Entrance" in idea:
+        branding_instruction = """
+    BRANDING REQUIREMENT:
+    - Include authentic Lidl branding: Lidl logo, Lidl signage, Lidl color scheme (blue and yellow/red), Lidl shopping carts, Lidl product displays.
+    - Make it look like a real Lidl store entrance with product displays, promotional signs, and Lidl-branded elements.
+    """
+    elif "Airport Terminal" in idea:
+        branding_instruction = """
+    CREATIVE EXECUTION:
+    - Design a fully-realized, photorealistic airport terminal with seating areas, departure boards, luggage carts, security checkpoints, retail kiosks, and authentic airport signage.
+    - Include realistic details: flight information displays, airline logos, travel-themed decor, and professional airport lighting.
+    """
+    elif "Medieval Dungeon" in idea:
+        branding_instruction = """
+    CREATIVE EXECUTION:
+    - Design a fully-realized, atmospheric medieval dungeon with stone walls, torches, chains, barrels, medieval furniture, and authentic period-appropriate details.
+    - Include rich textures, dramatic lighting, and immersive medieval elements that make it feel like a real historical space.
+    """
+    else:
+        branding_instruction = ""
+    
     prompt = f"""
     Edit this image to fill the empty space based on this concept: {idea}.
     
     INSTRUCTIONS:
-    - Keep the original room's perspective, lighting, and general architectural shell (walls, windows, floor type).
-    - ADD furniture, objects, decor, and lighting to match the concept "{idea}".
+    - Keep the original room's perspective, lighting, and general architectural shell (walls, pillars, windows, floor type).
+    - DO NOT enlarge the space or change walls, pillars, or structural elements.
+    
+    DESIGN DIRECTIVE - MAXIMALIST & EYE-CATCHING:
+    - Execute the concept "{idea}" in an OVER-THE-TOP, DETAILED, and LUXURIANT way.
+    - DO NOT leave the space looking sparse or minimal. Fill it with abundant furniture, layered textures, rich decor, plants, art, and intricate accessories.
+    - Make it visually striking and "magazine-cover" worthy.
+    - Use dramatic lighting and high-contrast elements to make the design pop.
+    {branding_instruction}
+    CONSTRAINTS:
     - DO NOT ADD any new structural elements (like built-in shelves, dividers, new walls, or architectural changes).
     - The room's structure must remain EXACTLY as it is. Only movable furniture and decor should be added.
-    - Be creative and detailed.
-    - Make it photorealistic and high quality.
     - Seamlessly blend the new objects into the existing environment.
+    - Photorealistic, 8k resolution, highly detailed.
     """
 
     print(f"🎨 Generating: {idea}...")
@@ -237,8 +278,9 @@ def generate_fill_image(client, image_path, idea, output_dir):
                 img_data = part.inline_data.data
                 
                 safe_name = "".join(c for c in idea if c.isalnum() or c in (' ', '_', '-')).strip()
-                safe_name = safe_name.replace(' ', '_').lower()[:50] # Limit length
-                filename = f"{safe_name}.png"
+                safe_name = safe_name.replace(' ', '_').lower()[:50]
+                prefix = f"{index}_" if index is not None else ""
+                filename = f"{prefix}{safe_name}.png"
                 filepath = os.path.join(output_dir, filename)
                 
                 with open(filepath, "wb") as f:
@@ -352,15 +394,95 @@ def main():
     # Step 2.5: Regenerate original image in 9:16
     regenerate_original(client, args.image_path, output_dir)
     
-    # Step 3: Generate images
-    print("\n🚀 Starting generation...")
-    for item in items:
-        if args.fill:
-            generate_fill_image(client, args.image_path, item, output_dir)
-        else:
-            reimagine_image(client, args.image_path, item, output_dir)
+    # Step 3: Generate images in parallel
+    print(f"\n🚀 Starting batch generation for {len(items)} items...")
+    
+    with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(items), 10)) as executor:
+        futures = []
+        for item in items:
+            if args.fill:
+                future = executor.submit(generate_fill_image, client, args.image_path, item, output_dir)
+            else:
+                future = executor.submit(reimagine_image, client, args.image_path, item, output_dir)
+            futures.append(future)
+            
+        # Wait for all to complete
+        for future in concurrent.futures.as_completed(futures):
+            try:
+                future.result()
+            except Exception as e:
+                print(f"  ❌ An error occurred in a thread: {e}")
         
     print("\n✨ Done!")
+
+
+def run_reimagine_for_carousel(client, image_path: str, output_dir: str, fill: bool = False):
+    """
+    Run reimagine for carousel: 5 styles (or fill ideas), regenerate original, generate all.
+    Returns (original_path, item_paths) or (None, {}) on failure.
+    """
+    num_items = 5
+    if fill:
+        items = brainstorm_fill_ideas(client, image_path, num_ideas=num_items)
+        item_type = "Ideas"
+    else:
+        items = analyze_image(client, image_path, num_styles=num_items)
+        item_type = "Styles"
+
+    if len(items) < 1:
+        print(f"❌ Could not identify {item_type.lower()}.")
+        return None, {}
+
+    items = items[:num_items]
+    print(f"\n✨ Identified {item_type}: {items}")
+
+    orig_path = regenerate_original(client, image_path, output_dir)
+    if not orig_path:
+        return None, {}
+
+    print(f"\n🚀 Generating {len(items)} reimagined images...")
+    item_paths = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=num_items) as ex:
+        futures = {}
+        for i, item in enumerate(items):
+            if fill:
+                fut = ex.submit(generate_fill_image, client, image_path, item, output_dir, i)
+            else:
+                fut = ex.submit(reimagine_image, client, image_path, item, output_dir, i)
+            futures[fut] = item
+        for fut in concurrent.futures.as_completed(futures):
+            item = futures[fut]
+            try:
+                path = fut.result()
+                if path:
+                    item_paths[item] = path
+            except Exception as e:
+                print(f"  ❌ {item}: {e}")
+
+    # Retry failed generations until we have 5 or exhaust retries
+    failed = [item for item in items if item not in item_paths]
+    for attempt in range(2):
+        if len(item_paths) >= num_items or not failed:
+            break
+        print(f"\n🔄 Retrying {len(failed)} failed generation(s)...")
+        for i, item in enumerate(items):
+            if item not in item_paths:
+                if fill:
+                    path = generate_fill_image(client, image_path, item, output_dir, i)
+                else:
+                    path = reimagine_image(client, image_path, item, output_dir, i)
+                if path:
+                    item_paths[item] = path
+                    failed = [x for x in failed if x != item]
+
+    if len(item_paths) < 1:
+        print("❌ No reimagined images generated.")
+        return orig_path, {}
+
+    # Preserve original items order for slide sequence
+    ordered_paths = {item: item_paths[item] for item in items if item in item_paths}
+    return orig_path, ordered_paths
+
 
 if __name__ == "__main__":
     main()
