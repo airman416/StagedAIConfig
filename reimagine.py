@@ -4,11 +4,11 @@ Reimagine Interior Design Styles
 
 This script:
 1. Takes an image path as an argument
-2. Uses Gemini to identify styles (2 good) OR fill ideas (2 good + 1 silly)
+2. Uses Gemini to identify styles (2) OR fill ideas (3)
 3. Generates reimagined versions of the original image
 4. Saves output to a date-stamped folder:
    - Regular mode: 1 original + 2 redesigns = 3 total
-   - Fill mode (-f): 1 original + 3 fills (2 good + 1 silly) = 4 total
+   - Fill mode (-f): 1 original + 3 fills = 4 total
 """
 
 import os
@@ -89,8 +89,8 @@ def analyze_image(client, image_path, num_styles=2):
 
 def brainstorm_fill_ideas(client, image_path, num_ideas=3):
     """
-    Brainstorm creative ideas to fill the empty space.
-    Default: 2 good + 1 silly. For carousel (num_ideas=5): 4 good + 1 silly.
+    Brainstorm realistic ideas to fill the empty space.
+    Default: 3 ideas. For carousel (num_ideas=5): 5 ideas.
     """
     try:
         image = Image.open(image_path)
@@ -98,21 +98,19 @@ def brainstorm_fill_ideas(client, image_path, num_ideas=3):
         print(f"❌ Error opening image: {e}")
         return []
 
-    silly_count = 1
-    good_count = num_ideas - silly_count
-
     prompt = f"""
     Analyze this interior design image, which likely contains empty space.
-    Brainstorm EXACTLY {num_ideas} creative and distinct ways to fill this space with furniture, objects, lighting, and decor.
+    Brainstorm EXACTLY {num_ideas} realistic and distinct ways to fill this space with furniture, objects, lighting, and decor.
     
     CRITICAL: You MUST return exactly {num_ideas} ideas - no fewer.
     AVOID CLICHES. DO NOT suggest "Reading Nook" or "Home Office" unless the space is clearly a library or study.
     
-    Structure:
-    - {good_count} UNIQUE & STYLISH ideas: Focus on specific, distinct functions (e.g., "Japanese Tea Corner", "Vinyl Record Listening Station", "Mid-century Cocktail Lounge", "Yoga Sanctuary").
-    - {silly_count} CREATIVE/ABSURD idea(s): Pick from: "Lidl Grocery Store Entrance", "Airport Terminal", "Medieval Dungeon"
+    Guidelines:
+    - Focus on practical, livable ideas that a real homeowner would actually implement.
+    - Each idea should suggest a clear function or mood (e.g., "Japanese Tea Corner", "Vinyl Listening Nook", "Cocktail Bar", "Indoor Garden").
+    - Ideas should feel attainable and tasteful, not fantasy or theme-park-like.
     
-    Return ONLY a raw list of the {num_ideas} ideas, one per line. Good ideas first, absurd one(s) last.
+    Return ONLY a raw list of the {num_ideas} ideas, one per line.
     Each idea must be SHORT - 2 to 3 words max.
     
     Do not include numbering, bullet points, or extra text.
@@ -216,28 +214,6 @@ def generate_fill_image(client, image_path, idea, output_dir, index=None):
         print(f"❌ Error opening image: {e}")
         return
 
-    # Special handling for specific absurd ideas
-    if "Lidl Grocery Store Entrance" in idea:
-        branding_instruction = """
-    BRANDING REQUIREMENT:
-    - Include authentic Lidl branding: Lidl logo, Lidl signage, Lidl color scheme (blue and yellow/red), Lidl shopping carts, Lidl product displays.
-    - Make it look like a real Lidl store entrance with product displays, promotional signs, and Lidl-branded elements.
-    """
-    elif "Airport Terminal" in idea:
-        branding_instruction = """
-    CREATIVE EXECUTION:
-    - Design a fully-realized, photorealistic airport terminal with seating areas, departure boards, luggage carts, security checkpoints, retail kiosks, and authentic airport signage.
-    - Include realistic details: flight information displays, airline logos, travel-themed decor, and professional airport lighting.
-    """
-    elif "Medieval Dungeon" in idea:
-        branding_instruction = """
-    CREATIVE EXECUTION:
-    - Design a fully-realized, atmospheric medieval dungeon with stone walls, torches, chains, barrels, medieval furniture, and authentic period-appropriate details.
-    - Include rich textures, dramatic lighting, and immersive medieval elements that make it feel like a real historical space.
-    """
-    else:
-        branding_instruction = ""
-    
     prompt = f"""
     Edit this image to fill the empty space based on this concept: {idea}.
     
@@ -245,17 +221,18 @@ def generate_fill_image(client, image_path, idea, output_dir, index=None):
     - Keep the original room's perspective, lighting, and general architectural shell (walls, pillars, windows, floor type).
     - DO NOT enlarge the space or change walls, pillars, or structural elements.
     
-    DESIGN DIRECTIVE - MAXIMALIST & EYE-CATCHING:
-    - Execute the concept "{idea}" in an OVER-THE-TOP, DETAILED, and LUXURIANT way.
-    - DO NOT leave the space looking sparse or minimal. Fill it with abundant furniture, layered textures, rich decor, plants, art, and intricate accessories.
-    - Make it visually striking and "magazine-cover" worthy.
-    - Use dramatic lighting and high-contrast elements to make the design pop.
-    {branding_instruction}
+    DESIGN DIRECTIVE - REALISTIC & LIVABLE:
+    - Execute the concept "{idea}" in a tasteful, realistic, and well-curated way.
+    - Think of how a real interior designer would stage this space — balanced, intentional, and inviting.
+    - Include appropriate furniture and a few well-chosen accessories. Avoid clutter or excess.
+    - Lighting should feel natural and consistent with the existing room.
+    - The result should look like a real, lived-in space — not a showroom or a movie set.
+    
     CONSTRAINTS:
     - DO NOT ADD any new structural elements (like built-in shelves, dividers, new walls, or architectural changes).
     - The room's structure must remain EXACTLY as it is. Only movable furniture and decor should be added.
     - Seamlessly blend the new objects into the existing environment.
-    - Photorealistic, 8k resolution, highly detailed.
+    - Photorealistic, high-quality interior design photography.
     """
 
     print(f"🎨 Generating: {idea}...")

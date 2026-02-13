@@ -10,6 +10,7 @@ Usage:
   python upload.py --from-dir ./carousel_xxx/slides/
 """
 
+import json
 import os
 import sys
 import datetime
@@ -17,6 +18,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 import requests
+from nanoid import generate
 
 load_dotenv()
 
@@ -27,9 +29,12 @@ if not POSTIZ_API_KEY:
 POSTIZ_BASE = "https://api.postiz.com/public/v1"
 TIKTOK_INTEGRATION_ID = "cmljzps6w01xzol0y7l9889vh"
 
+# Postiz-style IDs for group (no API returns this; nanoid used as fallback)
+ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+
 
 def upload_to_postiz(file_path: str) -> dict | None:
-    """Upload a file to Postiz and return {id, path}."""
+    """Upload a file to Postiz and return full response with id, path, etc."""
     with open(file_path, "rb") as f:
         r = requests.post(
             f"{POSTIZ_BASE}/upload",
@@ -44,53 +49,66 @@ def upload_to_postiz(file_path: str) -> dict | None:
 
 
 def post_carousel_to_tiktok(
-    image_refs: list[dict], integration_id: str, caption: str = ""
+    image_refs: list[dict], integration_id: str, caption: str = "", debug: bool = False
 ) -> bool:
-    """Post carousel to TikTok as a private post (SELF_ONLY via DIRECT_POST)."""
-    # type: "schedule" -> Postiz sends at the scheduled time
-    # DIRECT_POST     -> actually pushes to TikTok
-    # SELF_ONLY       -> only you can see it on TikTok
+    """Post carousel to TikTok as SELF_ONLY, scheduled 2 min from now."""
     schedule_time = (
         datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=2)
     )
+    # Format date without timezone suffix to match Postiz expected format
+    date_str = schedule_time.strftime("%Y-%m-%dT%H:%M:%S")
+
+    content = caption or "help me decide"
+
+    # Matches working Postiz format exactly; image ids come from upload response
     payload = {
         "type": "schedule",
-        "date": schedule_time.isoformat().replace("+00:00", "Z"),
-        "shortLink": False,
         "tags": [],
+        "shortLink": False,
+        "date": date_str,
         "posts": [
             {
                 "integration": {"id": integration_id},
+                "group": generate(ALPHABET, 10),
+                "settings": {
+                    "privacy_level": "SELF_ONLY",
+                    "content_posting_method": "UPLOAD",
+                    "autoAddMusic": "yes",
+                    "comment": True,
+                    "duet": False,
+                    "stitch": False,
+                    "video_made_with_ai": False,
+                    "disclose": False,
+                    "brand_organic_toggle": False,
+                    "brand_content_toggle": False,
+                    "title": "",
+                },
                 "value": [
                     {
-                        "content": caption
-                        or "help me decide 🥺\n\n#interiordesign #fyp #homedecor",
+                        "id": image_refs[0]["id"],
+                        "content": f"<p>{content}</p>",
+                        "delay": 0,
                         "image": image_refs,
                     }
                 ],
-                "settings": {
-                    "__type": "tiktok",
-                    "title": "help me decide 🥺",
-                    "privacy_level": "SELF_ONLY",
-                    "duet": False,
-                    "stitch": False,
-                    "comment": True,
-                    "autoAddMusic": "no",
-                    "brand_content_toggle": False,
-                    "brand_organic_toggle": False,
-                    "video_made_with_ai": True,
-                    "content_posting_method": "DIRECT_POST",
-                },
             }
         ],
     }
+    # ensure_ascii=False so emoji 😭 is sent as literal character, not \ud83d\ude2d
+    body = json.dumps(payload, ensure_ascii=False, default=str)
+
+    if debug:
+        print("\n--- Request payload (matches Postiz format) ---\n")
+        print(json.dumps(payload, indent=2, ensure_ascii=False, default=str))
+        print("\n--- End payload ---\n")
+
     r = requests.post(
         f"{POSTIZ_BASE}/posts",
         headers={
             "Authorization": POSTIZ_API_KEY,
             "Content-Type": "application/json",
         },
-        json=payload,
+        data=body.encode("utf-8"),
         timeout=60,
     )
     if r.status_code not in (200, 201):
@@ -101,7 +119,7 @@ def post_carousel_to_tiktok(
     return True
 
 
-def upload_carousel(slide_paths: list[str]) -> bool:
+def upload_carousel(slide_paths: list[str], debug: bool = False) -> bool:
     """Upload slide images to TikTok as draft carousel. Returns True on success."""
     if not slide_paths:
         print("❌ No slides to upload.")
@@ -116,9 +134,15 @@ def upload_carousel(slide_paths: list[str]) -> bool:
         ref = upload_to_postiz(p)
         if not ref:
             return False
-        image_refs.append({"id": ref["id"], "path": ref["path"]})
+        image_refs.append({
+            "id": ref["id"],
+            "path": ref["path"],
+            "alt": None,
+            "thumbnail": None,
+            "thumbnailTimestamp": None,
+        })
 
-    return post_carousel_to_tiktok(image_refs, TIKTOK_INTEGRATION_ID)
+    return post_carousel_to_tiktok(image_refs, TIKTOK_INTEGRATION_ID, debug=debug)
 
 
 def main():
@@ -136,6 +160,11 @@ def main():
         "--from-dir",
         help="Use all .jpg files from this directory (sorted)",
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Print the exact JSON payload sent to Postiz",
+    )
     args = parser.parse_args()
 
     if args.from_dir:
@@ -148,7 +177,7 @@ def main():
     else:
         slide_paths = args.slides
 
-    success = upload_carousel(slide_paths)
+    success = upload_carousel(slide_paths, debug=args.debug)
     sys.exit(0 if success else 1)
 
 
