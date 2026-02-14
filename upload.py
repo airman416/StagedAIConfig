@@ -48,6 +48,31 @@ def upload_to_postiz(file_path: str) -> dict | None:
     return r.json()
 
 
+import random
+
+CAPTIONS = [
+    "help me decide 😭 style 1, 2, 3, or 4??",
+    "which one is your favorite? (i can't choose!)",
+    "1, 2, 3, or 4? 👇 be honest!!",
+    "struggling to choose... thoughts?? 🤔",
+    "picking a style is hard 😅 help me out!",
+    "interior design magic ✨ which do you like best?",
+    "let me know what you think in the comments!!",
+    "transforming this space... need ideas ASAP 🏠",
+    "which one's the best?? (4 is my fav 😍)",
+    "omg i love them all... which is your top pick?",
+    "help!! i need to pick a style today 🕒",
+    "rate these transformations 1-10 👇",
+    "stuck between 2 and 3... what do you think?",
+    "renovation plans! 🛠️ which vibe wins?",
+    "dream home vibes ✨ pick your favorite!",
+    "honestly obsessed with 3, but what about you?",
+    "calling all designers!! which style works best?",
+    "i'm so torn 😩 help me pick a design!",
+    "can't decide on the vibe... 1 or 4??",
+]
+
+
 def post_carousel_to_tiktok(
     image_refs: list[dict], integration_id: str, caption: str = "", debug: bool = False
 ) -> bool:
@@ -58,7 +83,7 @@ def post_carousel_to_tiktok(
     # Format date without timezone suffix to match Postiz expected format
     date_str = schedule_time.strftime("%Y-%m-%dT%H:%M:%S")
 
-    content = caption or "help me decide"
+    content = caption or random.choice(CAPTIONS)
 
     # Matches working Postiz format exactly; image ids come from upload response
     payload = {

@@ -28,6 +28,10 @@ from edit import edit_carousel
 from upload import upload_carousel
 
 
+import random
+from original import generate_original, SPACE_TYPES
+
+
 def run_pipeline(image_path: str, fill_mode: bool = False, skip_approval: bool = False) -> bool:
     """Orchestrate reimagine -> edit -> (confirm) -> upload."""
     if not os.path.exists(image_path):
@@ -38,6 +42,10 @@ def run_pipeline(image_path: str, fill_mode: bool = False, skip_approval: bool =
     output_dir = Path.cwd() / f"carousel_{date_str}"
     output_dir.mkdir(exist_ok=True)
     print(f"📂 Output: {output_dir.resolve()}")
+
+    # If the image is just a filename in the current dir, copy it to output for safekeeping?
+    # Not strictly necessary but nice.
+    # shutil.copy(image_path, output_dir / "source_image.png")
 
     # --- Step 1: Reimagine ---
     mode = "fill" if fill_mode else "interior design styles"
@@ -87,9 +95,17 @@ def main():
 Reimagine modes:
   (default) Interior design - Identifies 5 styles, reimagines room in each
   -f       Fill            - Brainstorms 5 ideas to fill empty space (4 good + 1 silly)
+
+Automatic Generation:
+  If no image_path is provided, the script will generate a specific "problem space"
+  image (using original.py) before running the pipeline.
         """,
     )
-    parser.add_argument("image_path", help="Path to source interior image")
+    parser.add_argument(
+        "image_path",
+        nargs="?",
+        help="Path to source interior image. If omitted, generates a new one.",
+    )
     parser.add_argument(
         "-f",
         "--fill",
@@ -102,10 +118,48 @@ Reimagine modes:
         action="store_true",
         help="Skip approval prompts (generation + upload)",
     )
+    parser.add_argument(
+        "--space",
+        choices=list(SPACE_TYPES.keys()),
+        help="Specific space type to generate (only used if image_path is omitted)",
+    )
     args = parser.parse_args()
 
+    # Logic: If no image path, generate one first
+    pipeline_image_path = args.image_path
+
+    if not pipeline_image_path:
+        print("\n🏗️  No image provided. Step 0: Generating source image...")
+        client = init_gemini()
+        
+        # Decide space type
+        space_type = args.space if args.space else random.choice(list(SPACE_TYPES.keys()))
+        
+        # Create a temp output path for the source
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        generated_filename = f"generated_source_{space_type}_{timestamp}.png"
+        pipeline_image_path = str(Path.cwd() / generated_filename)
+        
+        generated_path = generate_original(client, space_type, pipeline_image_path)
+        
+        if not generated_path:
+            print("❌ Failed to generate source image.")
+            sys.exit(1)
+            
+        print(f"✅ Generated source image: {generated_path}")
+        
+        # If user didn't auto-confirm, ask if they like the source
+        if not args.yes:
+            # We can't easily show it in CLI, but we can pause
+            print(f"   (Open {generated_filename} to check it)")
+            resp = input("Proceed with this source image? (y/n): ").lower().strip()
+            if resp not in ("y", "yes"):
+                print("ABORTING: User rejected source image.")
+                sys.exit(0)
+
+    # Run the standard pipeline
     success = run_pipeline(
-        args.image_path, fill_mode=args.fill, skip_approval=args.yes
+        pipeline_image_path, fill_mode=args.fill, skip_approval=args.yes
     )
     sys.exit(0 if success else 1)
 
