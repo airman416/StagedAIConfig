@@ -141,7 +141,7 @@ def brainstorm_fill_ideas(client, image_path, num_ideas=3):
         print(f"❌ Error brainstorming: {e}")
         return []
 
-def reimagine_image(client, image_path, style_name, output_dir, index=None):
+def reimagine_image(client, image_path, style_name, output_dir, index=None, realistic_mode=False):
     """
     Generate a reimagined version of the image in the specified style.
     """
@@ -151,9 +151,27 @@ def reimagine_image(client, image_path, style_name, output_dir, index=None):
         print(f"❌ Error opening image for generation: {e}")
         return
 
-    # Create a prompt that encourages maintaining the layout but changing the style
+    # Prompt selection
+    if realistic_mode:
+        design_instruction = f"""
+    DESIGN INSTRUCTIONS (REALISTIC & ATTAINABLE):
+    - Redecorate this room in the {style_name} style using ATTAINABLE, REAL-WORLD furniture and decor.
+    - Imagine a regular homeowner did this renovation themselves (DIY friendly).
+    - DO NOT add impossible architectural features or luxury structural changes.
+    - Keep it simple: paint, new furniture, rugs, curtains, and lighting.
+    - The result should look like a cozy, lived-in home, not a high-end showroom.
+    - Maintain the modest scale of the room.
+    """
+    else:
+        design_instruction = f"""
+    DESIGN INSTRUCTIONS (BE DRAMATIC):
+    - COMPLETELY TRANSFORM the interior atmosphere, furniture, and decor to fully embody {style_name}.
+    - Use bold lighting, rich textures, and distinct materials characteristic of {style_name}.
+    - Make the design choices striking, high-contrast, and impactful while respecting the existing shell of the room.
+    """
+
     prompt = f"""
-    Reimagine this exact room with a DRAMATIC and BOLD transformation into the {style_name} interior design style.
+    Reimagine this exact room with a transformation into the {style_name} interior design style.
     
     CRITICAL STRUCTURAL CONSTRAINTS (MUST FOLLOW):
     - PRESERVE EXACTLY: The room layout, perspective, ceiling height, and ALL structural elements (walls, pillars, columns, windows, doors, beams).
@@ -161,10 +179,8 @@ def reimagine_image(client, image_path, style_name, output_dir, index=None):
     - DO NOT enlarge the room or change the spatial dimensions.
     - DO NOT remove windows, change door placements, or alter the architecture in any way.
     
-    DESIGN INSTRUCTIONS (BE DRAMATIC):
-    - COMPLETELY TRANSFORM the interior atmosphere, furniture, and decor to fully embody {style_name}.
-    - Use bold lighting, rich textures, and distinct materials characteristic of {style_name}.
-    - Make the design choices striking, high-contrast, and impactful while respecting the existing shell of the room.
+    {design_instruction}
+
     - Photorealistic, high-quality interior design photography.
     """
 
@@ -393,7 +409,7 @@ def main():
     print("\n✨ Done!")
 
 
-def run_reimagine_for_carousel(client, image_path: str, output_dir: str, fill: bool = False):
+def run_reimagine_for_carousel(client, image_path: str, output_dir: str, fill: bool = False, realistic: bool = False):
     """
     Run reimagine for carousel: 5 styles (or fill ideas), regenerate original, generate all.
     Returns (original_path, item_paths) or (None, {}) on failure.
@@ -425,7 +441,7 @@ def run_reimagine_for_carousel(client, image_path: str, output_dir: str, fill: b
             if fill:
                 fut = ex.submit(generate_fill_image, client, image_path, item, output_dir, i)
             else:
-                fut = ex.submit(reimagine_image, client, image_path, item, output_dir, i)
+                fut = ex.submit(reimagine_image, client, image_path, item, output_dir, i, realistic_mode=realistic)
             futures[fut] = item
         for fut in concurrent.futures.as_completed(futures):
             item = futures[fut]
@@ -447,7 +463,7 @@ def run_reimagine_for_carousel(client, image_path: str, output_dir: str, fill: b
                 if fill:
                     path = generate_fill_image(client, image_path, item, output_dir, i)
                 else:
-                    path = reimagine_image(client, image_path, item, output_dir, i)
+                    path = reimagine_image(client, image_path, item, output_dir, i, realistic_mode=realistic)
                 if path:
                     item_paths[item] = path
                     failed = [x for x in failed if x != item]

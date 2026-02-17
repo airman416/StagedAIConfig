@@ -29,6 +29,7 @@ import time
 from reimagine import init_gemini, run_reimagine_for_carousel
 from edit import edit_carousel
 from upload import upload_carousel
+from screen_text import generate_screen_text
 
 
 import random
@@ -45,7 +46,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def run_pipeline(image_path: str, fill_mode: bool = False, skip_approval: bool = False) -> bool:
+def run_pipeline(image_path: str, fill_mode: bool = False, skip_approval: bool = False, captions: list[str] = None, use_custom_story: bool = False) -> bool:
     """Orchestrate reimagine -> edit -> (confirm) -> upload."""
     
     try:
@@ -65,7 +66,7 @@ def run_pipeline(image_path: str, fill_mode: bool = False, skip_approval: bool =
         try:
             client = init_gemini()
             orig_path, item_paths = run_reimagine_for_carousel(
-                client, image_path, str(output_dir), fill=fill_mode
+                client, image_path, str(output_dir), fill=fill_mode, realistic=use_custom_story
             )
             if not orig_path or not item_paths:
                 logger.error("❌ [Stage 1/3] Reimagine failed: No images returned.")
@@ -83,10 +84,18 @@ def run_pipeline(image_path: str, fill_mode: bool = False, skip_approval: bool =
                 logger.warning("🚫 Pipeline cancelled by user after Reimagine stage.")
                 return False
 
+        # --- Step 1.5: Custom Story Generation (if requested) ---
+        if use_custom_story and not captions:
+             client = init_gemini()
+             # Need the item list (keys of item_paths)
+             items_list = list(item_paths.keys())
+             captions = generate_screen_text(client, items_list, fill_mode=fill_mode)
+             logger.info(f"📝 Generated Custom Screen Text:\n   - " + "\n   - ".join(captions))
+
         # --- Step 2: Edit (overlays) ---
         logger.info("✏️  [Stage 2/3] Edit (text + circle overlays) - Starting...")
         try:
-            slide_paths = edit_carousel(orig_path, item_paths, output_dir)
+            slide_paths = edit_carousel(orig_path, item_paths, output_dir, captions=captions)
             slides_dir = output_dir / "slides"
 
             for i, p in enumerate(slide_paths, 1):
@@ -166,6 +175,16 @@ Automatic Generation:
         choices=list(SPACE_TYPES.keys()),
         help="Specific space type to generate (only used if image_path is omitted)",
     )
+    parser.add_argument(
+        "--captions",
+        nargs="*",
+        help="Custom captions for slides (in order). Use \\n for line breaks.",
+    )
+    parser.add_argument(
+        "--custom",
+        action="store_true",
+        help="Generate custom story captions using Gemini (ignores --captions if set)",
+    )
     args = parser.parse_args()
 
     # Logic: If no image path, generate one first
@@ -185,7 +204,7 @@ Automatic Generation:
             generated_filename = f"generated_source_{space_type}_{timestamp}.png"
             pipeline_image_path = str(Path.cwd() / generated_filename)
             
-            generated_path = generate_original(client, space_type, pipeline_image_path)
+            generated_path = generate_original(client, space_type, pipeline_image_path, dated_look=args.custom)
             
             if not generated_path:
                 logger.error("❌ Failed to generate source image.")
@@ -206,9 +225,17 @@ Automatic Generation:
             traceback.print_exc()
             sys.exit(1)
 
+    # If --fill is used but no captions provided, use the "WAIT!!" text
+    if args.fill and not args.captions and not args.custom:
+        args.captions = ["WAIT!! what should i do\nwith this space??"]
+
     # Run the standard pipeline
     success = run_pipeline(
-        pipeline_image_path, fill_mode=args.fill, skip_approval=args.yes
+        pipeline_image_path, 
+        fill_mode=args.fill, 
+        skip_approval=args.yes, 
+        captions=args.captions, 
+        use_custom_story=args.custom
     )
     sys.exit(0 if success else 1)
 

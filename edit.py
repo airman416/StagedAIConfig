@@ -65,9 +65,9 @@ def ensure_transparency(img: Image.Image) -> Image.Image:
     return img
 
 
-def create_slide_1(original_path: str, output_path: str) -> str:
+def create_slide_1(original_path: str, output_path: str, text: Union[str, None] = None) -> str:
     """
-    Slide 1: Original + circle overlay centered + text "HELP!! what should i do with this space??" centered.
+    Slide 1: Original + circle overlay centered + text (default: "HELP!!...") centered.
     """
     base = Image.open(original_path).convert("RGBA").resize(TARGET_SIZE, Image.Resampling.LANCZOS)
 
@@ -90,7 +90,13 @@ def create_slide_1(original_path: str, output_path: str) -> str:
         font = ImageFont.load_default()
 
     draw = ImageDraw.Draw(base)
-    lines = ["HELP!! what should i do", "with this space??"]
+    
+    if text:
+        # Use provided text, split by newline if present, or wrap if needed (simple split for now)
+        lines = text.split("\\n")
+    else:
+        lines = ["HELP!! what should i do", "with this space??"]
+        
     line_heights = []
     for ln in lines:
         b = draw.textbbox((0, 0), ln, font=font)
@@ -112,17 +118,18 @@ def create_slide_1(original_path: str, output_path: str) -> str:
 
 
 def create_item_slide(
-    reimagined_path: str, item_name: str, output_path: str, include_tagline: bool = True
+    reimagined_path: str, item_name: str, output_path: str, include_tagline: bool = True, force_text: Union[str, None] = None
 ) -> str:
     """
     Slides 2-6: Reimagined image + style/idea name (lowercase, <3 words) + optional tagline.
+    If force_text is provided, use it verbatim (supports newlines).
     """
     base = Image.open(reimagined_path).convert("RGB").resize(TARGET_SIZE, Image.Resampling.LANCZOS)
     draw = ImageDraw.Draw(base)
 
     short_name = shorten_name(item_name)
     try:
-        font_large = ImageFont.truetype(str(TIKTOK_FONT), 64)
+        font_large = ImageFont.truetype(str(TIKTOK_FONT), 72)
         font_small = ImageFont.truetype(str(TIKTOK_FONT), 36)
     except OSError:
         font_large = ImageFont.load_default()
@@ -131,7 +138,11 @@ def create_item_slide(
     tagline_text = "i made these ideas with the staged ai app "
     tagline_full = f"{tagline_text}{EMOJI}"
     tagline_fallback = f"{tagline_text}\u2661"  # ♡ if emoji font unavailable
-    full_text = f"{short_name}\n{tagline_full}" if include_tagline else short_name
+
+    if force_text:
+        full_text = force_text.replace("\\n", "\n")
+    else:
+        full_text = f"{short_name}\n{tagline_full}" if include_tagline else short_name
 
     emoji_font = _get_emoji_font()
 
@@ -143,11 +154,13 @@ def create_item_slide(
             b_text = draw.textbbox((0, 0), tagline_text, font=font_small)
             b_emoji = draw.textbbox((0, 0), EMOJI, font=emoji_font)
             h = max(b_text[3] - b_text[1], b_emoji[3] - b_emoji[1])
-        elif line == tagline_full and not emoji_font:
-            bbox = draw.textbbox((0, 0), tagline_fallback, font=font_small)
-            h = bbox[3] - bbox[1]
+        elif (line == tagline_fallback or line == tagline_full) and not emoji_font:
+             bbox = draw.textbbox((0, 0), tagline_fallback, font=font_small)
+             h = bbox[3] - bbox[1]
         else:
-            font = font_large if line == short_name else font_small
+            # USER REQUEST: Make text same size as image 1 (which is 72, but here we have 64 defined as large).
+            # Let's use font_large (64) for all custom text lines.
+            font = font_large 
             bbox = draw.textbbox((0, 0), line, font=font)
             h = bbox[3] - bbox[1]
         line_heights.append(h)
@@ -186,6 +199,7 @@ def edit_carousel(
     original_path: str,
     item_paths: dict[str, str],
     output_dir: Union[str, Path],
+    captions: list[str] = None,
 ) -> list[str]:
     """
     Create 6 carousel slides from original + reimagined images.
@@ -200,13 +214,30 @@ def edit_carousel(
 
     # Slide 1: Original + circle + "HELP!! what should i do with this space??"
     slide_1 = slides_dir / "slide_1.jpg"
-    create_slide_1(original_path, str(slide_1))
+    
+    # Use captions[0] if available
+    s1_text = captions[0] if captions and len(captions) > 0 else None
+    create_slide_1(original_path, str(slide_1), text=s1_text)
     slide_paths.append(str(slide_1))
 
     # Slides 2-6: Reimagined + style/idea name + tagline on first
     for i, (item_name, path) in enumerate(item_paths.items()):
         out = slides_dir / f"slide_{i + 2}.jpg"
-        create_item_slide(path, item_name, str(out), include_tagline=(i == 0))
+        
+        # Use captions[i+1] if available (captions index 1 corresponds to slide 2, i=0)
+        c_idx = i + 1
+        force_txt = captions[c_idx] if captions and len(captions) > c_idx else None
+        
+        # USER REQUEST: Last slide (normally slide 6, i.e. i=4) should have specific CTA.
+        # Check if this is the last item
+        if i == len(item_paths) - 1:
+            cta = "I made these images\nwith the Staged AI app"
+            if force_txt:
+                 force_txt = f"{force_txt}\n\n{cta}"
+            else:
+                 force_txt = cta
+
+        create_item_slide(path, item_name, str(out), include_tagline=(i == 0), force_text=force_txt)
         slide_paths.append(str(out))
 
     # Pad to 6 slides if needed
@@ -215,7 +246,12 @@ def edit_carousel(
         last_path = item_paths[last_name]
         idx = len(slide_paths) + 1
         out = slides_dir / f"slide_{idx}.jpg"
-        create_item_slide(last_path, last_name, str(out), include_tagline=False)
+        
+        # Check if we have a caption for this padded slide
+        c_idx = idx - 1 # slide 1 is index 0
+        force_txt = captions[c_idx] if captions and len(captions) > c_idx else None
+        
+        create_item_slide(last_path, last_name, str(out), include_tagline=False, force_text=force_txt)
         slide_paths.append(str(out))
 
     return slide_paths[:6]

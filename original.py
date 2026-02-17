@@ -7,11 +7,11 @@ Generates photorealistic images of lived-in homes with a specific "problem area"
 to the carousel pipeline (main.py -> reimagine -> edit -> upload).
 
 Usage:
-  python original.py                          # Random space, 1 image
-  python original.py --space alcove           # Specific space type
-  python original.py --count 3               # Generate 3 images to pick from
-  python original.py --space attic_nook -n 3  # 3 attic nook images
-  python original.py --list                   # List all space types
+  python original.py                                      # Random space, 1 image
+  python original.py --space confusing_alcove             # Specific space type
+  python original.py --count 3                            # Generate 3 images to pick from
+  python original.py --space liminal_hallway_widening -n 3 # 3 specific images
+  python original.py --list                               # List all space types
 """
 
 import os
@@ -43,223 +43,180 @@ def init_gemini():
 # ---------------------------------------------------------------------------
 
 SPACE_TYPES = {
-    "alcove": {
-        "label": "Recessed alcove off a hallway",
+    "liminal_hallway_widening": {
+        "label": "Pointless hallway widening",
         "description": (
-            "A recessed alcove or nook visible from a hallway. The alcove itself "
-            "is completely bare -- empty carpet or floor with nothing in it. "
-            "The hallway around it looks normal: carpet, walls with doors to "
-            "other rooms, baseboards, maybe a light fixture hanging above the "
-            "empty alcove. A half-wall or archway frames the entrance to the nook."
+            "A section of a hallway that inexplicably widens into a small, square "
+            "empty area. It's too small to be a room, but too big to just be a hallway. "
+            "It feels like a mistake in the floor plan. "
+            "Surrounded by normal doors and baseboards. It is completely empty."
         ),
     },
-    "attic_nook": {
-        "label": "Narrow attic nook under sloped eaves",
+    "odd_angled_nook": {
+        "label": "Nook with strange non-90-degree angles",
         "description": (
-            "A narrow area under a sloped or vaulted ceiling in an attic room. "
-            "The ceiling angles down, creating an intimate, challenging corridor-like "
-            "space that leads to a small window at the far end. This specific area "
-            "is completely unused. Nearby, at the edge of the frame, there may be "
-            "a small shelf or console hinting that the rest of the room is lived-in."
+            "A small nook or corner where the walls meet at odd, sharp, or obtuse angles "
+            "due to the roofline or exterior geometry. "
+            "Standard furniture wouldn't fit squarely here. "
+            "It looks completely empty, baffling, and architecturaly confused."
         ),
     },
-    "staircase_landing": {
-        "label": "Open landing at the top of stairs",
+    "dead_end_corridor": {
+        "label": "Short corridor that leads nowhere",
         "description": (
-            "The open area at the top of a staircase. The stairs and railing are "
-            "visible and look normal -- the adjacent hallway has doors to bedrooms "
-            "or a bathroom. But the landing itself is a generous carpeted area with "
-            "absolutely nothing in it. A window or chandelier may be nearby, "
-            "highlighting the unused potential of this transition space."
+            "A short, vestigial hallway or corridor stump that ends in a blank wall or a window. "
+            "It serves no purpose as a walkway. "
+            "It is completely empty, just carpet/wood and walls. "
+            "It feels like a dead zone in the house."
         ),
     },
-    "built_in_shelving": {
-        "label": "Wall with bare built-in niches or entertainment cutout",
+    "oversized_landing": {
+        "label": "Awkwardly large staircase landing",
         "description": (
-            "A wall with built-in niches, an arched cutout, or an entertainment "
-            "center recess. Every shelf and niche is completely bare. A dangling "
-            "cable or a single outlet hints that a TV or equipment used to be here. "
-            "The rest of the room has hardwood or carpet and looks lived-in -- "
-            "maybe a cardboard box or loose cable on the floor nearby."
+            "A staircase landing that is strangely huge, creating a vast empty square "
+            "of carpet between flights of stairs. "
+            "It feels barren and echoing. "
+            "Too big to leave empty, but awkward to fill because of the traffic flow through it."
         ),
     },
-    "bay_window_area": {
-        "label": "Bay window section with no seating",
+    "under_stairs_void": {
+        "label": "Deep, dark void under open stairs",
         "description": (
-            "A bay window area in a living room or bedroom that has no bench, "
-            "no seating, no cushions -- just bare floor in front of the windows. "
-            "The windows let in natural light. The rest of the room, visible at "
-            "the edges, has signs of normal life: a door frame, baseboards, "
-            "maybe the edge of existing furniture barely in frame."
+            "The space underneath a floating or open staircase. "
+            "It's a large, odd-shaped footprint on the floor that feels like a 'dead zone'. "
+            "The ceiling slants aggressively, making it hard to stand in. "
+            "It is currently just empty floor collecting dust."
         ),
     },
-    "under_stairs": {
-        "label": "Triangular void beneath a staircase",
+    "confusing_alcove": {
+        "label": "Alcove with no clear purpose",
         "description": (
-            "The triangular space underneath a staircase. The stairs above are "
-            "clearly used -- you can see the underside of the steps or the wall "
-            "following the stair angle. But the space beneath is completely empty "
-            "and unused. The surrounding area (hallway, adjacent room) looks normal."
+            "A recessed alcove in a living room wall that isn't deep enough for a "
+            "closet but too deep for a shelf. "
+            "It has no shelving, just three blank walls. "
+            "It looks like it was meant for something specific that never happened."
         ),
     },
-    "bonus_room_corner": {
-        "label": "Empty corner of an upstairs room",
+    "loft_dead_space": {
+        "label": "Unusable slice of a loft",
         "description": (
-            "One conspicuously bare corner of an upstairs bonus room or spare room. "
-            "The corner has interesting features -- maybe a window, sloped ceiling, "
-            "or an outlet suggesting something should go there. The rest of the room "
-            "at the edges of the frame hints at normal use."
+            "A narrow strip or wedge of floor in a loft area, trapped between the "
+            "stair railing and a knee wall. "
+            "It's technically floor space, but it's hard to access and visually isolated. "
+            "It looks lonely and forgotten."
         ),
     },
-    "sunroom": {
-        "label": "Enclosed porch or sunroom, empty",
+    "column_gap": {
+        "label": "Gap between structural columns",
         "description": (
-            "An enclosed porch or sunroom with large windows or glass panels. "
-            "The room is flooded with natural light but completely empty -- bare "
-            "floor, no furniture, no plants. Through the doorway behind, the "
-            "adjoining room looks normal and furnished, creating contrast with "
-            "this bright but unused space."
+            "A strange empty space created between a structural column/pillar and a wall. "
+            "It creates a visual 'gap' or alley that feels empty and unresolved. "
+            "The floor is continuous but the space feels separated and useless."
         ),
     },
-    "walk_in_closet": {
-        "label": "Large unused walk-in closet",
+    "dormer_nook": {
+        "label": "Deep, narrow dormer window recess",
         "description": (
-            "A spacious walk-in closet that's completely empty -- bare rods, "
-            "empty shelves, nothing on the floor. The closet may have built-in "
-            "wire shelving or wooden shelving that's all bare. Through the closet "
-            "doorway, the bedroom it connects to looks normal and lived-in."
+            "A very deep, narrow recess leading to a dormer window. "
+            "The side walls are close together, creating a tunnel-like feel. "
+            "The floor area in front of the window is empty and feels disconnected from the room."
         ),
     },
-    "breakfast_nook": {
-        "label": "Small windowed area off a kitchen, bare",
+    "sloped_ceiling_corner": {
+        "label": "Corner with aggressive roof slope",
         "description": (
-            "A small windowed bump-out or nook area off a kitchen. The nook is "
-            "completely bare -- no table, no chairs, just empty floor and windows "
-            "letting in light. The kitchen at the edge of the frame has countertops, "
-            "cabinets, maybe an appliance visible, looking normal and used."
-        ),
-    },
-    "basement_section": {
-        "label": "Finished but empty basement section",
-        "description": (
-            "One section of a finished basement that's completely empty. The walls "
-            "are drywalled and painted, the floor is carpeted or has laminate, "
-            "there may be recessed lighting overhead -- but nothing occupies the "
-            "space. Adjacent areas of the basement may show a door, a utility panel, "
-            "or other signs of a used home."
-        ),
-    },
-    "entryway": {
-        "label": "Foyer or mudroom, unused space",
-        "description": (
-            "A foyer, entryway, or mudroom near the front door. The area has "
-            "interesting features -- a coat closet door, a bench area with nothing "
-            "on it, hooks on the wall with nothing hanging, tile or hardwood floor. "
-            "The front door or adjacent hallway is visible, and the rest of the "
-            "home looks normal beyond the entryway."
-        ),
-    },
-    "loft_area": {
-        "label": "Open loft overlooking a lower floor",
-        "description": (
-            "An open loft area with a railing that overlooks the lower floor. "
-            "The loft is completely empty -- just carpet or hardwood with a railing "
-            "and maybe a window. You can see the railing and the open drop to "
-            "the lower level. The lower floor, partially visible, looks lived-in."
-        ),
-    },
-    "fireplace_wall": {
-        "label": "Wall with a fireplace but nothing else",
-        "description": (
-            "A wall with a fireplace (gas or traditional) as its centerpiece. "
-            "The mantel is bare, no art above it, no furniture flanking it -- the "
-            "entire wall is empty except for the fireplace itself. The room around "
-            "it is otherwise normal, with flooring, baseboards, and maybe the edge "
-            "of a doorway or window visible."
-        ),
-    },
-    "corner_of_room": {
-        "label": "Conspicuously bare corner of a lived-in room",
-        "description": (
-            "One specific empty corner of an otherwise lived-in living room, "
-            "family room, or bedroom. The corner has bare wall and floor -- maybe "
-            "an outlet or a light switch on the wall hinting at intended use. "
-            "The rest of the room at the edges shows signs of normal life: a door "
-            "frame, the edge of a piece of furniture barely visible."
+            "A corner of a room on an upper floor where the roofline cuts into the room "
+            "drastically, leaving only a few feet of vertical wall before slanting in. "
+            "The floor space under the slope is empty and awkward to use."
         ),
     },
 }
 
 # Architectural twists randomly added for variety
 ARCHITECTURAL_TWISTS = [
-    "An arched doorway or opening frames the area.",
-    "Crown molding and wainscoting add character to the walls.",
-    "A small decorative window or transom is above the area.",
-    "The ceiling has an interesting coffered or tray detail.",
-    "Exposed wooden beams cross the ceiling above the space.",
-    "A built-in ledge or shelf runs along one wall but is empty.",
-    "Recessed lighting in the ceiling highlights the empty area below.",
-    "A column or half-wall partially separates this area from the rest.",
+    "The ceiling height changes abruptly above this spot.",
+    "A decorative archway frames this useless space.",
+    "A random support beam cuts through the edge of the visual field.",
+    "The flooring changes direction or type near this area.",
+    "There is an awkwardly placed outlet right in the center of the wall.",
+    "A partial half-wall separates this void from the main room.",
+    "The lighting is slightly dim in this specific corner.",
+    "A window is placed asymmetrically in the space.",
 ]
 
 
-def build_prompt(space_type: str) -> str:
+def build_prompt(space_type: str, dated_look: bool = False) -> str:
     """Build the image generation prompt for a given space type."""
     info = SPACE_TYPES[space_type]
     twist = random.choice(ARCHITECTURAL_TWISTS)
 
+    if dated_look:
+        return f"""Generate a photorealistic image taken inside an AVERAGE, SLIGHTLY UNKEMPT residential home.
+        
+STYLE & VIBE:
+- This is a REGULAR person's house, not a wealthy home.
+- It looks LIVED-IN and slightly cluttered/messy (but not filthy).
+- The interior design is UGLY and MISMATCHED.
+- Think: Cheap furniture, hand-me-downs, maybe a random exercise bike in the corner, piles of mail/papers, or a slightly unmade sofa.
+- Finishes: Beige rental carpet, popcorn ceiling, basic builder-grade white walls that are slightly scuffed.
+
+PERSPECTIVE & FEEL:
+- Shot from a PERSONAL, CANDID angle (smartphone photo).
+- Bad lighting (maybe just one overhead bulb on).
+- It feels real, raw, and relatable.
+
+SUBJECT (The Room):
+- A standard Living Room or Bedroom that just looks sad and needs help.
+- Furniture is functional but ugly (e.g. a black leather couch next to a pine table).
+- It feels STAGNANT and boring.
+
+CRITICAL:
+- NO people, NO pets.
+- NO text.
+- Portrait orientation (9:16)."""
+    
     return f"""Generate a photorealistic image taken inside a LIVED-IN residential home.
-The camera is pointed at a specific problem area -- an unused or empty spot
-within an otherwise normal, occupied home.
+The camera is pointed at a specific AWKWARD, UNDEFINED space -- an area where the
+intended use is completely unclear ("liminal space").
 
 PERSPECTIVE & FEEL:
 - Shot from a PERSONAL, CANDID angle as if a homeowner took it with their
-  phone, standing a few feet away, pointing the camera at the problem area.
-  Slightly off-center framing is fine.
-- NOT a professional real estate wide-angle shot. NOT a render. NOT a 3D model.
+  phone, standing a few feet away, baffled by the space.
+- Slightly off-center framing is fine.
 - The image should feel authentic, like it was posted on social media asking
-  "what should I do with this space?"
+  "what on earth do I put here?"
 
 THE PROBLEM AREA (center of the image):
 - {info['description']}
 - {twist}
-- This specific area is EMPTY and UNUSED -- it's the focal point of the photo
-  and the "problem" the homeowner wants help with.
-- The emptiness should feel like WASTED POTENTIAL -- the area has good bones,
-  interesting architectural features, but nothing occupies it.
-- The viewer should immediately think: "oh you could put X there."
+- This specific area is EMPTY and UNUSED.
+- The emptiness should feel AWKWARD and BAFFLING.
+- It is NOT a standard square room. It has odd geometry or placement.
+- The viewer should immediately think: "I have no idea what would go there."
 
 THE SURROUNDINGS (edges / background):
 - The rest of the visible home should look NORMAL and LIVED-IN.
-- Hints of adjacent rooms, hallways, doorways, staircases, or other
-  used parts of the house should be visible at the edges or background.
-- Minor mundane items are OK in the surroundings (a light switch, an air vent,
-  a door handle, baseboards, a cable, a small shelf) to sell the realism.
-- The surroundings FRAME the problem area and draw the eye to it.
+- Hints of adjacent rooms, hallways, doorways, or staircases should be visible.
+- This creates a contrast: a normal house with this one weird, useless feature.
 
 ARCHITECTURAL DETAILS:
-- The problem area should have interesting features that make it compelling:
-  sloped ceilings, built-in niches, half-walls, railings, arched openings,
-  recessed lighting, crown molding, a light fixture, a window, etc.
-- Standard American suburban home finishes (textured drywall, white trim,
-  white baseboards, neutral wall colors, carpet or hardwood).
-
-LIGHTING:
-- Natural light from windows, supplemented by existing fixtures.
-  Normal residential daytime lighting.
+- Make the geometry feel slightly "off" or challenging (angles, slopes, tight squeezes).
+- Residential finishes (drywall, carpet/wood, trim) to ground it in reality.
 
 CRITICAL:
 - The PROBLEM AREA itself must be empty -- no furniture or decor there.
-- The SURROUNDINGS should feel lived-in and normal.
+- The SURROUNDINGS should feel lived-in.
 - NO people, NO pets.
-- NO text, NO watermarks, NO logos.
+- NO text.
 - Portrait orientation (9:16)."""
 
 
-def generate_original(client, space_type: str, output_path: str) -> Union[str, None]:
+def generate_original(client, space_type: str, output_path: str, dated_look: bool = False) -> Union[str, None]:
     """Generate a single original image for the given space type."""
-    prompt = build_prompt(space_type)
+    prompt = build_prompt(space_type, dated_look=dated_look)
     label = SPACE_TYPES[space_type]["label"]
+    if dated_look:
+        label += " (Dated Look)"
 
     print(f"🎨 Generating: {label}...")
 
@@ -297,11 +254,11 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python original.py                          # Random space type, 1 image
-  python original.py --space alcove           # Generate an alcove image
-  python original.py --count 3               # Generate 3 random images
-  python original.py --space attic_nook -n 3  # 3 attic nook images
-  python original.py --list                   # Show all space types
+  python original.py                                      # Random space type, 1 image
+  python original.py --space confusing_alcove             # Generate specific image
+  python original.py --count 3                            # Generate 3 random images
+  python original.py --space liminal_hallway_widening -n 3 # 3 specific images
+  python original.py --list                               # Show all space types
         """,
     )
     parser.add_argument(
