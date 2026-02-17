@@ -15,6 +15,7 @@ import os
 import sys
 import datetime
 from pathlib import Path
+from typing import Union
 
 from dotenv import load_dotenv
 import requests
@@ -33,7 +34,7 @@ TIKTOK_INTEGRATION_ID = "cmljzps6w01xzol0y7l9889vh"
 ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
 
-def upload_to_postiz(file_path: str) -> dict | None:
+def upload_to_postiz(file_path: str) -> Union[dict, None]:
     """Upload a file to Postiz and return full response with id, path, etc."""
     with open(file_path, "rb") as f:
         r = requests.post(

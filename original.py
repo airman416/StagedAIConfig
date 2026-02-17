@@ -20,6 +20,7 @@ import argparse
 import datetime
 import concurrent.futures
 from pathlib import Path
+from typing import Union
 
 from dotenv import load_dotenv
 from google import genai
@@ -255,7 +256,7 @@ CRITICAL:
 - Portrait orientation (9:16)."""
 
 
-def generate_original(client, space_type: str, output_path: str) -> str | None:
+def generate_original(client, space_type: str, output_path: str) -> Union[str, None]:
     """Generate a single original image for the given space type."""
     prompt = build_prompt(space_type)
     label = SPACE_TYPES[space_type]["label"]

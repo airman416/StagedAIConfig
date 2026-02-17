@@ -21,7 +21,10 @@ Usage:
 import os
 import sys
 import datetime
+import logging
+import traceback
 from pathlib import Path
+import time
 
 from reimagine import init_gemini, run_reimagine_for_carousel
 from edit import edit_carousel
@@ -31,58 +34,98 @@ from upload import upload_carousel
 import random
 from original import generate_original, SPACE_TYPES
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger(__name__)
+
 
 def run_pipeline(image_path: str, fill_mode: bool = False, skip_approval: bool = False) -> bool:
     """Orchestrate reimagine -> edit -> (confirm) -> upload."""
-    if not os.path.exists(image_path):
-        print(f"❌ Image not found: {image_path}")
-        return False
-
-    date_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    output_dir = Path.cwd() / f"carousel_{date_str}"
-    output_dir.mkdir(exist_ok=True)
-    print(f"📂 Output: {output_dir.resolve()}")
-
-    # If the image is just a filename in the current dir, copy it to output for safekeeping?
-    # Not strictly necessary but nice.
-    # shutil.copy(image_path, output_dir / "source_image.png")
-
-    # --- Step 1: Reimagine ---
-    mode = "fill" if fill_mode else "interior design styles"
-    print(f"\n🎨 Step 1: Reimagine ({mode})")
-    client = init_gemini()
-    orig_path, item_paths = run_reimagine_for_carousel(
-        client, image_path, str(output_dir), fill=fill_mode
-    )
-    if not orig_path or not item_paths:
-        return False
-
-    if not skip_approval:
-        resp = input("\nProceed with editing & carousel? (y/n): ").lower().strip()
-        if resp not in ("y", "yes"):
-            print("Cancelled.")
+    
+    try:
+        if not os.path.exists(image_path):
+            logger.error(f"❌ Image not found: {image_path}")
             return False
 
-    # --- Step 2: Edit (overlays) ---
-    print("\n✏️  Step 2: Edit (text + circle overlays)")
-    slide_paths = edit_carousel(orig_path, item_paths, output_dir)
-    slides_dir = output_dir / "slides"
+        date_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        output_dir = Path.cwd() / f"carousel_{date_str}"
+        output_dir.mkdir(exist_ok=True)
+        logger.info(f"📂 Output Directory Created: {output_dir.resolve()}")
 
-    for i, p in enumerate(slide_paths, 1):
-        print(f"  ✅ Slide {i}: {p}")
+        # --- Step 1: Reimagine ---
+        mode = "fill" if fill_mode else "interior design styles"
+        logger.info(f"🎨 [Stage 1/3] Reimagine ({mode}) - Starting...")
+        
+        try:
+            client = init_gemini()
+            orig_path, item_paths = run_reimagine_for_carousel(
+                client, image_path, str(output_dir), fill=fill_mode
+            )
+            if not orig_path or not item_paths:
+                logger.error("❌ [Stage 1/3] Reimagine failed: No images returned.")
+                return False
+            logger.info("✅ [Stage 1/3] Reimagine complete.")
+        except Exception as e:
+            logger.error(f"❌ [Stage 1/3] Reimagine failed with exception: {e}")
+            logger.debug(traceback.format_exc())
+            return False
 
-    # --- Step 3: Confirm, then upload ---
-    print(f"\n📁 Carousel slides saved to: {slides_dir.resolve()}")
-    print("   Review the images, then confirm to upload to TikTok.")
-    if not skip_approval:
-        resp = input("\nReady to upload to TikTok as draft? (y/n): ").lower().strip()
-        if resp not in ("y", "yes"):
-            print("Upload cancelled. Your slides are saved locally.")
-            return True
+        if not skip_approval:
+            print("\nPreview generated images in output folder.")
+            resp = input("Proceed with editing & carousel? (y/n): ").lower().strip()
+            if resp not in ("y", "yes"):
+                logger.warning("🚫 Pipeline cancelled by user after Reimagine stage.")
+                return False
 
-    # --- Step 4: Upload ---
-    print("\n📤 Step 3: Upload")
-    return upload_carousel(slide_paths)
+        # --- Step 2: Edit (overlays) ---
+        logger.info("✏️  [Stage 2/3] Edit (text + circle overlays) - Starting...")
+        try:
+            slide_paths = edit_carousel(orig_path, item_paths, output_dir)
+            slides_dir = output_dir / "slides"
+
+            for i, p in enumerate(slide_paths, 1):
+                logger.info(f"  ✅ Slide {i} generated: {p}")
+            
+            logger.info(f"✅ [Stage 2/3] Edit complete. Slides saved to: {slides_dir.resolve()}")
+        except Exception as e:
+            logger.error(f"❌ [Stage 2/3] Edit failed with exception: {e}")
+            logger.debug(traceback.format_exc())
+            return False
+
+        # --- Step 3: Confirm, then upload ---
+        print(f"\n📁 Carousel slides saved to: {slides_dir.resolve()}")
+        print("   Review the images, then confirm to upload to TikTok.")
+        
+        if not skip_approval:
+            resp = input("\nReady to upload to TikTok as draft? (y/n): ").lower().strip()
+            if resp not in ("y", "yes"):
+                 logger.warning("🚫 Upload cancelled by user. Slides are saved locally.")
+                 return True # Not a failure, just a stop
+
+        # --- Step 4: Upload ---
+        logger.info("📤 [Stage 3/3] Upload to TikTok - Starting...")
+        try:
+            result = upload_carousel(slide_paths)
+            if result:
+                logger.info("✅ [Stage 3/3] Upload complete!")
+            else:
+                logger.error("❌ [Stage 3/3] Upload failed.")
+            return result
+        except Exception as e:
+            logger.error(f"❌ [Stage 3/3] Upload failed with exception: {e}")
+            logger.debug(traceback.format_exc())
+            return False
+
+    except Exception as e:
+        logger.critical(f"❌ Unhandled exception in pipeline: {e}")
+        traceback.print_exc()
+        return False
 
 
 def main():
@@ -129,33 +172,39 @@ Automatic Generation:
     pipeline_image_path = args.image_path
 
     if not pipeline_image_path:
-        print("\n🏗️  No image provided. Step 0: Generating source image...")
-        client = init_gemini()
-        
-        # Decide space type
-        space_type = args.space if args.space else random.choice(list(SPACE_TYPES.keys()))
-        
-        # Create a temp output path for the source
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        generated_filename = f"generated_source_{space_type}_{timestamp}.png"
-        pipeline_image_path = str(Path.cwd() / generated_filename)
-        
-        generated_path = generate_original(client, space_type, pipeline_image_path)
-        
-        if not generated_path:
-            print("❌ Failed to generate source image.")
-            sys.exit(1)
+        logger.info("🏗️  No image provided. [Stage 0] Generating source image...")
+        try:
+            client = init_gemini()
             
-        print(f"✅ Generated source image: {generated_path}")
-        
-        # If user didn't auto-confirm, ask if they like the source
-        if not args.yes:
-            # We can't easily show it in CLI, but we can pause
-            print(f"   (Open {generated_filename} to check it)")
-            resp = input("Proceed with this source image? (y/n): ").lower().strip()
-            if resp not in ("y", "yes"):
-                print("ABORTING: User rejected source image.")
-                sys.exit(0)
+            # Decide space type
+            space_type = args.space if args.space else random.choice(list(SPACE_TYPES.keys()))
+            logger.info(f"   Selected space type: {space_type}")
+            
+            # Create a temp output path for the source
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            generated_filename = f"generated_source_{space_type}_{timestamp}.png"
+            pipeline_image_path = str(Path.cwd() / generated_filename)
+            
+            generated_path = generate_original(client, space_type, pipeline_image_path)
+            
+            if not generated_path:
+                logger.error("❌ Failed to generate source image.")
+                sys.exit(1)
+                
+            logger.info(f"✅ Generated source image: {generated_path}")
+            
+            # If user didn't auto-confirm, ask if they like the source
+            if not args.yes:
+                # We can't easily show it in CLI, but we can pause
+                print(f"   (Open {generated_filename} to check it)")
+                resp = input("Proceed with this source image? (y/n): ").lower().strip()
+                if resp not in ("y", "yes"):
+                    logger.warning("🚫 ABORTING: User rejected source image.")
+                    sys.exit(0)
+        except Exception as e:
+            logger.critical(f"❌ Failed during source image generation: {e}")
+            traceback.print_exc()
+            sys.exit(1)
 
     # Run the standard pipeline
     success = run_pipeline(

@@ -12,6 +12,7 @@ Can be run standalone or imported by main.py.
 import os
 from pathlib import Path
 
+from typing import Union
 from PIL import Image, ImageDraw, ImageFont
 
 SCRIPT_DIR = Path(__file__).parent.resolve()
@@ -184,7 +185,7 @@ def create_item_slide(
 def edit_carousel(
     original_path: str,
     item_paths: dict[str, str],
-    output_dir: str | Path,
+    output_dir: Union[str, Path],
 ) -> list[str]:
     """
     Create 6 carousel slides from original + reimagined images.
@@ -221,7 +222,9 @@ def edit_carousel(
 
 
 def main():
-    """CLI for editing pre-generated reimagine output."""
+    """
+    CLI for editing pre-generated reimagine output.
+    """
     import argparse
 
     parser = argparse.ArgumentParser(
