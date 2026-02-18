@@ -32,60 +32,22 @@ def generate_screen_text(client, items: list[str], fill_mode: bool = False) -> l
 
 
     prompt = f"""
-    You are a social media storyteller for an interior design app called \"Staged AI\".
+    Write a 6-part story about a (Mom/Landlord/Partner) reacting to these styles: {items_str}.
     
-    We have a carousel with 6 slides:
-    - Slide 1: The original "before" photo ({scenario}).
-    - Slides 2-6: Five different {item_type} applied to the room. The styles are: {items_str}.
+    RULES:
+    1. Each line = one complete slide. Do NOT split a sentence across slides.
+    2. Max 3 words per line. You MUST include a \\n every 2 or 3 words.
+    3. No emojis. No repetitive starts (don't repeat the subject every slide).
     
-    GOAL: Write a COHESIVE, ENTERTAINING 6-PART STORY that flows across the slides.
+    EXAMPLE ARC:
+    1. My landlord\\ninsists this\\nroom is fine
+    2. Then I showed\\nthe {items[0]}\\ndesign version
+    3. He actually\\n*blinked twice*\\nin pure silence
+    4. Now he is\\nmeasuring for\\n{items[1]} furniture
+    5. He even asked\\nfor the {items[2]}\\nstyle guide
+    6. Guess who is\\nrenovating in\\n{items[4]} now?
     
-    TONE: Millennial / Gen Z. Use emojis.
-    - Use *asterisks* for actions/reactions (e.g. *her reaction was priceless*, *gasps in aesthetic*, *crying in poor*).
-    - Avoid cheesy direct quotes like "Too clean for me!". Instead describe the vibe or reaction.
-    - Be punchy and relatable. 
-    
-    FORMATTING RULES (CRITICAL):
-    - MAX 5 WORDS PER LINE.
-    - MAX 10 WORDS TOTAL per slide.
-    - Use \\n to force line breaks.
-    - KEEP IT SHORT.
-    
-    Choose ONE random story archetype from below (or invent a similar one):
-    
-    Archetype A (The Mom Makeover):
-    1. "I showed my mom\\nwhat AI thinks\\nher living room could be"
-    2. "{items[0]}??\\n*she was literally speechless* 😶"
-    3. "Then we tried {items[1]}\\n*too fancy for the dog* 😂"
-    4. "But {items[2]}...\\nWait, she actually loved this??"
-    5. "I think she's obsessed\\nwith {items[3]} now ✨"
-    6. "She's at Home Depot.\\nThanks Staged AI 💀" ({items[4]})
-
-    Archetype B (The Rental Upgrade):
-    1. "My landlord said no paint\\nso I asked AI instead 🤫"
-    2. "This is what it looks like\\nvs {items[0]} ✨"
-    3. "{items[1]} vibe\\nis kinda everything??"
-    4. "I didn't know I needed\\n{items[2]} until now."
-    5. "Which one should I\\nsecretly do? {items[3]}..."
-    6. "Don't tell my landlord 🤫\\nStaged AI" ({items[4]})
-    
-    Archetype C (The Partner Test):
-    1. "My boyfriend thinks\\nhis apartment is fine 🚩"
-    2. "Showed him {items[0]}\\n*his reaction was priceless* 💀"
-    3. "He actually admitted\\n{items[1]} is better."
-    4. "Imagine if he actually\\ncleaned up for {items[2]}..."
-    5. "We are definitely doing\\n{items[3]}. No debate."
-    6. "Relationship saved. ✅\\nStaged AI" ({items[4]})
-
-    INSTRUCTIONS:
-    - Pick ONE storyline.
-    - Write 6 short captions.
-    - STRICTLY follow the line break and word count rules.
-    - Mention the generated style names naturally.
-    - Slide 6 should always wrap up the story.
-    
-    Output format:
-    Return ONLY the 6 captions, one per line.
+    Return exactly 6 lines. Each line MUST have multiple \\n breaks.
     """
     
     print("✍️  Weaving a story for captions...")
