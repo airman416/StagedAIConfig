@@ -10,7 +10,7 @@ Usage:
   python original.py                                      # Random space, 1 image
   python original.py --space confusing_alcove             # Specific space type
   python original.py --count 3                            # Generate 3 images to pick from
-  python original.py --space liminal_hallway_widening -n 3 # 3 specific images
+  python original.py --space bay_window_nook -n 3         # 3 specific images
   python original.py --list                               # List all space types
 """
 
@@ -43,47 +43,21 @@ def init_gemini():
 # ---------------------------------------------------------------------------
 
 SPACE_TYPES = {
-    "liminal_hallway_widening": {
-        "label": "Pointless hallway widening",
-        "description": (
-            "A section of a hallway that inexplicably widens into a small, square "
-            "empty area. It's too small to be a room, but too big to just be a hallway. "
-            "It feels like a mistake in the floor plan. "
-            "Surrounded by normal doors and baseboards. It is completely empty."
-        ),
-    },
     "odd_angled_nook": {
         "label": "Nook with strange non-90-degree angles",
         "description": (
             "A small nook or corner where the walls meet at odd, sharp, or obtuse angles "
             "due to the roofline or exterior geometry. "
+            "It is tucked away — nobody walks through it. "
             "Standard furniture wouldn't fit squarely here. "
-            "It looks completely empty, baffling, and architecturaly confused."
-        ),
-    },
-    "dead_end_corridor": {
-        "label": "Short corridor that leads nowhere",
-        "description": (
-            "A short, vestigial hallway or corridor stump that ends in a blank wall or a window. "
-            "It serves no purpose as a walkway. "
-            "It is completely empty, just carpet/wood and walls. "
-            "It feels like a dead zone in the house."
-        ),
-    },
-    "oversized_landing": {
-        "label": "Awkwardly large staircase landing",
-        "description": (
-            "A staircase landing that is strangely huge, creating a vast empty square "
-            "of carpet between flights of stairs. "
-            "It feels barren and echoing. "
-            "Too big to leave empty, but awkward to fill because of the traffic flow through it."
+            "It looks completely empty, baffling, and architecturally confused."
         ),
     },
     "under_stairs_void": {
-        "label": "Deep, dark void under open stairs",
+        "label": "Deep void under open stairs",
         "description": (
             "The space underneath a floating or open staircase. "
-            "It's a large, odd-shaped footprint on the floor that feels like a 'dead zone'. "
+            "It's a large, odd-shaped footprint on the floor tucked to the side — not in a walkway. "
             "The ceiling slants aggressively, making it hard to stand in. "
             "It is currently just empty floor collecting dust."
         ),
@@ -91,9 +65,10 @@ SPACE_TYPES = {
     "confusing_alcove": {
         "label": "Alcove with no clear purpose",
         "description": (
-            "A recessed alcove in a living room wall that isn't deep enough for a "
-            "closet but too deep for a shelf. "
-            "It has no shelving, just three blank walls. "
+            "A recessed alcove in a living room or bedroom wall that isn't deep enough "
+            "for a closet but too deep for a shelf. "
+            "It has no shelving, just three blank walls forming a boxed-in nook. "
+            "Nobody walks through it — it's a dead end. "
             "It looks like it was meant for something specific that never happened."
         ),
     },
@@ -102,23 +77,25 @@ SPACE_TYPES = {
         "description": (
             "A narrow strip or wedge of floor in a loft area, trapped between the "
             "stair railing and a knee wall. "
+            "It's a dead-end pocket of space — not a path anyone walks through. "
             "It's technically floor space, but it's hard to access and visually isolated. "
             "It looks lonely and forgotten."
         ),
     },
     "column_gap": {
-        "label": "Gap between structural columns",
+        "label": "Gap between structural column and wall",
         "description": (
-            "A strange empty space created between a structural column/pillar and a wall. "
-            "It creates a visual 'gap' or alley that feels empty and unresolved. "
+            "A strange empty pocket of space created between a structural column/pillar and a wall. "
+            "It's a boxed-in void that nobody walks through — it just sits there. "
             "The floor is continuous but the space feels separated and useless."
         ),
     },
     "dormer_nook": {
-        "label": "Deep, narrow dormer window recess",
+        "label": "Deep dormer window recess",
         "description": (
-            "A very deep, narrow recess leading to a dormer window. "
-            "The side walls are close together, creating a tunnel-like feel. "
+            "A very deep recess leading to a dormer window in a bedroom or attic room. "
+            "The side walls create a boxed-in nook around the window. "
+            "Nobody walks through it — it's a dead end at the window. "
             "The floor area in front of the window is empty and feels disconnected from the room."
         ),
     },
@@ -127,7 +104,36 @@ SPACE_TYPES = {
         "description": (
             "A corner of a room on an upper floor where the roofline cuts into the room "
             "drastically, leaving only a few feet of vertical wall before slanting in. "
-            "The floor space under the slope is empty and awkward to use."
+            "It's a tucked-away corner — not a path, not a doorway, just dead space. "
+            "The floor under the slope is empty and awkward to use."
+        ),
+    },
+    "bay_window_nook": {
+        "label": "Empty bay window nook",
+        "description": (
+            "A bay window bump-out in a living room or bedroom that juts out from the wall, "
+            "creating a wide, shallow pocket of floor space. "
+            "It's a dead-end alcove — nobody walks through it. "
+            "The three-sided window area has nothing in it, just bare floor. "
+            "It feels like wasted potential."
+        ),
+    },
+    "fireplace_alcove": {
+        "label": "Empty alcove beside a fireplace",
+        "description": (
+            "A recessed nook built into the wall right next to a fireplace or chimney breast. "
+            "It's a boxed-in pocket — nobody walks through it, it just sits empty. "
+            "It's too narrow for a closet but too deep to ignore. "
+            "The walls are bare and it feels purposeless."
+        ),
+    },
+    "corner_pocket": {
+        "label": "Deep L-shaped corner pocket",
+        "description": (
+            "A deep corner where two walls of a room create an L-shaped pocket of dead space. "
+            "It's tucked away from the main area — nobody walks through it. "
+            "It's big enough to do something with but small enough to feel confusing. "
+            "It is completely bare and undecorated."
         ),
     },
 }
@@ -192,6 +198,9 @@ THE PROBLEM AREA (center of the image):
 - This specific area is EMPTY and UNUSED.
 - The emptiness should feel AWKWARD and BAFFLING.
 - It is NOT a standard square room. It has odd geometry or placement.
+- CRITICAL: This must be a NOOK or DEAD-END pocket of space. Nobody walks through it.
+  It is NOT a hallway, NOT a corridor, NOT a passageway. It is a tucked-away void
+  where furniture, shelving, or decor could realistically be placed.
 - The viewer should immediately think: "I have no idea what would go there."
 
 THE SURROUNDINGS (edges / background):
@@ -257,7 +266,7 @@ Examples:
   python original.py                                      # Random space type, 1 image
   python original.py --space confusing_alcove             # Generate specific image
   python original.py --count 3                            # Generate 3 random images
-  python original.py --space liminal_hallway_widening -n 3 # 3 specific images
+  python original.py --space bay_window_nook -n 3         # 3 specific images
   python original.py --list                               # Show all space types
         """,
     )
