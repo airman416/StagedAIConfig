@@ -60,7 +60,7 @@ def resume_custom_workflow(carousel_dir: str):
         client = init_gemini()
         # Pass realistic_mode=True context (which mapped to custom story context)
         # In captions.py, fill_mode=False triggers the "Renovation" story context.
-        captions = generate_screen_text(client, list(item_paths.keys()), fill_mode=False)
+        captions = generate_screen_text(client, list(item_paths.keys()), fill_mode=False, image_path=original_path)
         for i, c in enumerate(captions):
             print(f"   [{i+1}] {c}")
     except Exception as e:

@@ -1,5 +1,6 @@
 import google.genai.types as types
 from reimagine import init_gemini
+from PIL import Image
 
 
 CHARACTERS = [
@@ -18,85 +19,85 @@ CHARACTERS = [
 ]
 
 STORY_EXAMPLES = [
-    # --- Mom / living room ---
+    # --- Mom / living room: dismisses first, warms up, locks in on third ---
     [
-        "I showed my mom\\nwhat AI thinks our\\nliving room could be",
-        "She's been complaining\\nabout it for years",
-        "[STYLE_1]\\n *her reaction was priceless*",
-        "[STYLE_2]\\n she chose this one",
+        "I used AI to fix\\nmy mom's living room\\nshe didn't ask for this",
+        "She's been complaining\\nabout it for years\\nbut hates change",
+        "[STYLE_1]\\n *too cold*\\nshe said",
+        "[STYLE_2]\\n *maybe*\\nshe wasn't sure",
+        "[STYLE_3]\\n she went quiet\\nthen asked me\\nto scroll back",
         "She's redecorating now",
     ],
-    # --- Dad / garage ---
+    # --- Dad / home office: resistant, indifferent, finally sold ---
     [
-        "My dad said his\\ngarage was fine\\nthe way it was",
-        "It hasn't changed\\nsince 2003",
-        "[STYLE_1]\\n he went completely silent",
-        "[STYLE_2]\\n he screenshot this one",
-        "He's measuring\\nthe walls tomorrow",
+        "My dad said his\\nhome office was fine\\nI let AI prove otherwise",
+        "It looks exactly the\\nsame as 2009",
+        "[STYLE_1]\\n *that's not me*\\nhe said immediately",
+        "[STYLE_2]\\n he shrugged\\nnot convinced",
+        "[STYLE_3]\\n he stared at it\\nfor a long time\\nthen said nothing",
+        "He measured the room\\nthe next morning",
     ],
-    # --- Landlord / apartment ---
+    # --- Roommate / kitchen: skeptical, unimpressed, then the one that got him ---
     [
-        "Showed my landlord\\nwhat his apartment\\ncould actually look like",
-        "He thought I was\\ntrying to raise the rent",
-        "[STYLE_1]\\n he called his wife over",
-        "[STYLE_2]\\n they both just stared",
-        "He's hiring a contractor\\nnext week",
+        "I used AI to show\\nmy roommate what\\nour kitchen could be",
+        "He'd given up\\non it completely",
+        "[STYLE_1]\\n *looks like a\\ncafe I'd never go to*",
+        "[STYLE_2]\\n he scrolled past\\nwithout a word",
+        "[STYLE_3]\\n *wait — how much\\nwould that actually cost*",
+        "He's splitting it\\nwith me now",
     ],
-    # --- Girlfriend / bedroom ---
+    # --- Sister / bathroom: picky, dismissive, then the one that worked ---
     [
-        "My girlfriend has\\nhated our bedroom\\nsince we moved in",
-        "I never understood\\nwhy until I saw these",
-        "[STYLE_1]\\n she grabbed my phone",
-        "[STYLE_2]\\n *this is the one*",
-        "We're going furniture\\nshopping Saturday",
-    ],
-    # --- Roommate / kitchen ---
-    [
-        "My roommate said\\nour kitchen was\\nbeyond saving",
-        "We haven't had\\npeople over in months",
-        "[STYLE_1]\\n he didn't believe\\nit was the same room",
-        "[STYLE_2]\\n he sent it\\nto his mom",
-        "He's splitting the cost\\nwith me now",
-    ],
-    # --- Sister / bathroom ---
-    [
-        "My sister asked me\\nto help with her\\nbathroom renovation",
-        "She's been putting\\nit off for two years",
-        "[STYLE_1]\\n she saved it immediately",
-        "[STYLE_2]\\n this one made\\nher change her mind",
+        "My sister hates\\nher bathroom\\nI tried fixing it with AI",
+        "She rejects every idea\\nanyone suggests",
+        "[STYLE_1]\\n *too trendy*\\nshe said",
+        "[STYLE_2]\\n *nice but not me*",
+        "[STYLE_3]\\n she grabbed my phone\\nand didn't give it back",
         "She already ordered\\nthe tiles",
+    ],
+    # --- Partner / bedroom: frustrated, dismisses two, finds the one ---
+    [
+        "My girlfriend has hated\\nour bedroom for years\\nso I used AI to fix it",
+        "I've tried suggesting\\nthings for two years",
+        "[STYLE_1]\\n *too minimal*\\nshe scrolled past",
+        "[STYLE_2]\\n *that's not us*",
+        "[STYLE_3]\\n she sent it\\nto herself\\nwithout saying anything",
+        "We're going furniture\\nshopping Saturday",
     ],
 ]
 
 FILL_STORY_EXAMPLES = [
-    # --- Mom / empty corner ---
+    # --- Mom / empty corner: dismisses two, finds the third ---
     [
-        "My mom has had\\nthis empty corner\\nfor three years",
-        "She never knew\\nwhat to do with it",
-        "[FILL_1]\\n she actually gasped",
-        "[FILL_2]\\n *wait go back*",
+        "My mom had this empty\\ncorner for years\\nI used AI to fix it",
+        "She'd rejected every\\nsuggestion I'd had",
+        "[FILL_1]\\n *not enough storage*\\nshe said",
+        "[FILL_2]\\n *too much going on*",
+        "[FILL_3]\\n she went quiet\\nthen asked\\n*where do I get that*",
         "She's already measuring\\nthe space",
     ],
-    # --- Partner / awkward nook ---
+    # --- Partner / awkward nook: indifferent, indifferent, then locked in ---
     [
-        "My girlfriend keeps\\ncomplaining about this\\nawkward space",
-        "Nothing we tried\\never looked right",
-        "[FILL_1]\\n she made me\\nzoom in",
-        "[FILL_2]\\n this is the one\\nshe won't stop\\ntalking about",
+        "My girlfriend had\\nthis awkward nook\\nfor two years\\nI tried using AI to fix it",
+        "Nothing we looked at\\never felt right",
+        "[FILL_1]\\n *fine but not special*",
+        "[FILL_2]\\n she shrugged\\nand kept scrolling",
+        "[FILL_3]\\n she made me\\nzoom in three times",
         "We're ordering it\\nthis weekend",
     ],
-    # --- Dad / empty wall ---
+    # --- Dad / blank wall: stubborn, dismisses one, then the one that got him ---
     [
-        "My dad has stared at\\nthis blank wall\\nfor five years",
-        "He says he's\\n*thinking about it*",
-        "[FILL_1]\\n he finally stopped thinking",
-        "[FILL_2]\\n he sent this\\nto the family group chat",
+        "My dad has stared\\nat this blank wall\\nfor five years\\nI used AI to fix it",
+        "He says he's\\n*thinking about it*\\nhe is not",
+        "[FILL_1]\\n *too much work*\\nhe said",
+        "[FILL_2]\\n *I don't know*\\nnot a yes",
+        "[FILL_3]\\n he sent it to\\nthe family group chat\\nwithout asking me",
         "He drove to the store\\nthe same day",
     ],
 ]
 
 
-def generate_screen_text(client, items: list[str], fill_mode: bool = False) -> list[str]:
+def generate_screen_text(client, items: list[str], fill_mode: bool = False, image_path: str = None) -> list[str]:
     """
     Generate 6 screen text overlays for carousel slides using Gemini.
 
@@ -105,6 +106,9 @@ def generate_screen_text(client, items: list[str], fill_mode: bool = False) -> l
     Slides 3-4: Style/fill reveals with a genuine reaction
     Slide 5: Resolution — what they're doing now
     Slide 6: (handled by edit.py — "Staged AI" appended automatically)
+
+    image_path: path to the original room image. When provided, the image is
+    passed to Gemini so the story references the correct room type.
 
     Returns list of 6 strings. The 6th is a short closing line;
     edit.py will append "Staged AI" to it.
@@ -120,32 +124,45 @@ def generate_screen_text(client, items: list[str], fill_mode: bool = False) -> l
         for slide_num, line in enumerate(ex, 1):
             formatted_examples += f"  {slide_num}. {line}\n"
 
+    room_instruction = (
+        "I am attaching the actual room photo. "
+        "Look at it carefully and identify the EXACT room type (e.g. living room, bedroom, kitchen, corner nook, under-stairs space, etc.). "
+        "Every slide of the story MUST reference that specific room and nothing else. "
+        "Never invent a different room type."
+        if image_path else
+        "Write about a generic home space."
+    )
+
     prompt = f"""You write short-form video captions for an interior design app called Staged AI.
 
 The user has a room photo. The app reimagined it in these {item_label}s: {items_str}
 
-Write a 6-slide story. The story is always about someone specific — a mom, dad, girlfriend, roommate, landlord, sister, etc. It should feel like something that genuinely mattered to the author. The person had a real problem with their space, the AI showed them possibilities, and their reaction was worth sharing.
+{room_instruction}
+
+Write a 6-slide story. The story is always about someone specific — a mom, dad, girlfriend, roommate, landlord, sister, etc. It should feel real and earned. The person is skeptical or picky. Most of the designs don't land. One finally does. That tension is what makes it worth watching.
 
 STRUCTURE:
-1. HOOK — introduce the person and the space problem (this goes over the original photo)
-2. CONTEXT — why this matters, how long it's been an issue, the backstory
-3. STYLE REVEAL + REACTION — show {items[0]} with their genuine reaction
-4. STYLE REVEAL + MOMENT — show {items[1]} with what they did or said
-5. ANOTHER REVEAL or REACTION — show {items[2]} with a reaction or moment
-6. RESOLUTION — what's happening now (don't include "Staged AI", it's added automatically)
+1. HOOK — introduce the person, the specific room shown in the photo, AND the fact that you used AI to fix it. This must be on slide 1. Examples: "I used AI to fix my mom's living room", "my dad's bedroom hadn't changed in years so I used AI", "I tried using AI to figure out what to do with this space"
+2. CONTEXT — why this room matters, their resistance to change, the backstory
+3. STYLE REVEAL + DISMISSAL — show {items[0]}, they don't like it or are indifferent. Show their actual reaction
+4. STYLE REVEAL + INDIFFERENCE — show {items[1]}, still not quite right. A muted or skeptical response
+5. STYLE REVEAL + THE ONE — show {items[2]}, this is the one that gets them. A real moment — silence, grabbing the phone, sending it somewhere
+6. RESOLUTION — what's happening now as a result (don't include "Staged AI", it's added automatically)
 
 RULES:
 - No full stops (periods). Ever
 - No emojis. Ever
 - Write about someone else, never "I redesigned" — always "I showed my mom" or "my dad saw"
 - Use \\n to break lines. Keep each line to roughly 3-5 words so it reads well on a phone screen
-- Italicize key reactions with *asterisks* like *she couldn't believe it* or *go back to that one*
+- Italicize quoted reactions or thoughts with *asterisks* like *too cold* or *where do I get that*
 - Each slide should be 2-4 short lines separated by \\n
-- The story should have emotional weight — this person cared about their space
-- Don't repeat the same sentence structure across slides
-- Don't start every slide with the same word
-- Slides 3-5 MUST start with the actual {item_label} name on the first line
+- Slides 3, 4, and 5 MUST start with the actual {item_label} name on the first line
 - The {item_label} names to use are exactly: {items_str}
+- Slides 3 and 4 must show rejection or indifference — not excitement. Vary how they dismiss it
+- Slide 5 is the turn — make the reaction specific and real, not generic
+- Slide 1 MUST mention using AI to fix/redesign/figure out the space
+- Don't start every slide with the same word
+- Don't repeat the same sentence structure across slides
 
 {formatted_examples}
 
@@ -155,9 +172,16 @@ Return exactly 6 lines, one per slide. Nothing else — no numbering, no labels,
 
     print("Generating story captions...")
     try:
+        contents = [prompt]
+        if image_path:
+            try:
+                contents = [Image.open(image_path), prompt]
+            except Exception:
+                pass  # fall back to text-only if image can't be loaded
+
         response = client.models.generate_content(
             model="gemini-2.5-flash",
-            contents=[prompt],
+            contents=contents,
             config=types.GenerateContentConfig(
                 temperature=0.9,
             ),
@@ -175,10 +199,10 @@ Return exactly 6 lines, one per slide. Nothing else — no numbering, no labels,
     except Exception as e:
         print(f"Error generating story captions: {e}")
         return [
-            f"I showed my mom\\nwhat AI thinks our\\nroom could look like",
-            f"She's wanted to\\nchange it for years",
-            f"{items[0]}\\n *her jaw dropped*",
-            f"{items[1]}\\n she chose this one\\nimmediately",
-            f"{items[2]}\\n *wait go back*",
+            f"I used AI to fix\\nmy mom's room\\nshe didn't ask for this",
+            f"She's wanted to change it\\nfor years but hates\\nevery suggestion",
+            f"{items[0]}\\n *not really me*\\nshe said",
+            f"{items[1]}\\n she shrugged\\nand kept scrolling",
+            f"{items[2]}\\n she went quiet\\nthen asked\\n*where do I get that*",
             f"She's redecorating now",
         ]

@@ -46,7 +46,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def run_pipeline(image_path: str, fill_mode: bool = False, skip_approval: bool = False, captions: list[str] = None, use_custom_story: bool = False) -> bool:
+def run_pipeline(image_path: str, fill_mode: bool = False, skip_approval: bool = False, captions: list[str] = None, use_custom_story: bool = False, source_image_path: str = None) -> bool:
     """Orchestrate reimagine -> edit -> (confirm) -> upload."""
     
     try:
@@ -87,15 +87,15 @@ def run_pipeline(image_path: str, fill_mode: bool = False, skip_approval: bool =
         # --- Step 1.5: Custom Story Generation (if requested) ---
         if use_custom_story and not captions:
              client = init_gemini()
-             # Need the item list (keys of item_paths)
              items_list = list(item_paths.keys())
-             captions = generate_screen_text(client, items_list, fill_mode=fill_mode)
+             story_image = source_image_path or orig_path or image_path
+             captions = generate_screen_text(client, items_list, fill_mode=fill_mode, image_path=story_image)
              logger.info(f"📝 Generated Custom Screen Text:\n   - " + "\n   - ".join(captions))
 
         # --- Step 2: Edit (overlays) ---
         logger.info("✏️  [Stage 2/3] Edit (text + circle overlays) - Starting...")
         try:
-            slide_paths = edit_carousel(orig_path, item_paths, output_dir, captions=captions)
+            slide_paths = edit_carousel(orig_path, item_paths, output_dir, captions=captions, fill_mode=fill_mode)
             slides_dir = output_dir / "slides"
 
             for i, p in enumerate(slide_paths, 1):
@@ -186,6 +186,11 @@ Automatic Generation:
         action="store_true",
         help="Generate custom story captions using Gemini (ignores --captions if set)",
     )
+    parser.add_argument(
+        "--story",
+        action="store_true",
+        help="Generate a story for fill mode (use with --fill). Ignored without --fill.",
+    )
     args = parser.parse_args()
 
     # Logic: If no image path, generate one first
@@ -226,17 +231,21 @@ Automatic Generation:
             traceback.print_exc()
             sys.exit(1)
 
-    # If --fill is used but no captions provided, use the "WAIT!!" text
-    if args.fill and not args.captions and not args.custom:
-        args.captions = ["WAIT!! what should i do\nwith this space??"]
+    # --story requires --fill; treat it as the fill equivalent of --custom
+    use_fill_story = args.fill and getattr(args, "story", False)
+
+    # If --fill without --story and no captions provided, use the default hook text
+    if args.fill and not args.captions and not use_fill_story:
+        args.captions = ["HELP!! what should i do\nwith this space??"]
 
     # Run the standard pipeline
     success = run_pipeline(
-        pipeline_image_path, 
-        fill_mode=args.fill, 
-        skip_approval=args.yes, 
-        captions=args.captions, 
-        use_custom_story=args.custom
+        pipeline_image_path,
+        fill_mode=args.fill,
+        skip_approval=args.yes,
+        captions=args.captions,
+        use_custom_story=args.custom or use_fill_story,
+        source_image_path=pipeline_image_path,
     )
     sys.exit(0 if success else 1)
 

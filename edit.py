@@ -46,64 +46,63 @@ def _get_emoji_font(size: int = EMOJI_FONT_SIZE):
 EMOJI_PATTERN = re.compile(r'([\U00010000-\U0010ffff\u2600-\u27bf\u2b50\u2b55\u231a\u231b\u23e9-\u23f3\u23f8-\u23fa\U0001f000-\U0001ffff])', flags=re.UNICODE)
 
 
+def _font_line_height(font: ImageFont.FreeTypeFont) -> int:
+    """Return a consistent line height for a font using its metrics (ascent + descent).
+    This is the same for every line regardless of which glyphs are present."""
+    ascent, descent = font.getmetrics()
+    return ascent + descent
+
+
 def draw_text_centered_mixed(
-    draw: ImageDraw.Draw, 
-    text: str, 
-    font: ImageFont.FreeTypeFont, 
-    emoji_font: Union[ImageFont.FreeTypeFont, None], 
-    center_y: int, 
-    target_width: int, 
-    fill="white", 
-    stroke_width=0, 
-    stroke_fill=None
+    draw: ImageDraw.Draw,
+    text: str,
+    font: ImageFont.FreeTypeFont,
+    emoji_font: Union[ImageFont.FreeTypeFont, None],
+    top_y: int,
+    target_width: int,
+    fill="white",
+    stroke_width=0,
+    stroke_fill=None,
 ):
     """
-    Draws text centered horizontally, handling segments of main font and emoji font.
+    Draws one line of text centered horizontally.
+    top_y is the y coordinate passed directly to draw.text (the font's anchor point).
+    Accounts for left-bearing offset so the visual center matches the screen center.
     """
     if not emoji_font:
         bbox = draw.textbbox((0, 0), text, font=font)
         tw = bbox[2] - bbox[0]
-        tx = (target_width - tw) // 2
-        draw.text((tx, center_y), text, fill=fill, font=font, stroke_width=stroke_width, stroke_fill=stroke_fill)
+        # Subtract left bearing so the visible pixels are truly centered
+        tx = (target_width - tw) // 2 - bbox[0]
+        draw.text((tx, top_y), text, fill=fill, font=font, stroke_width=stroke_width, stroke_fill=stroke_fill)
         return
 
-    # Split into segments using capturing group patterns
+    # Split into emoji / non-emoji segments
     parts = EMOJI_PATTERN.split(text)
-    
-    # Calculate total width for centering
+
     total_w = 0
     render_tasks = []
-    
+
     for part in parts:
         if not part:
             continue
-        
-        # If it's a match for any emoji range
         is_emoji = bool(EMOJI_PATTERN.fullmatch(part))
         f = emoji_font if is_emoji else font
-        
-        try:
-            w = draw.textlength(part, font=f)
-        except AttributeError:
-            bbox = draw.textbbox((0, 0), part, font=f)
-            w = bbox[2] - bbox[0]
-            
+        bbox = draw.textbbox((0, 0), part, font=f)
+        w = bbox[2] - bbox[0]
         total_w += w
-        render_tasks.append((part, f, is_emoji))
-        
+        render_tasks.append((part, f, is_emoji, bbox[0]))
+
+    # Start x so that the total visible span is centered
     current_x = (target_width - total_w) // 2
-    for part, f, is_emoji in render_tasks:
+    for part, f, is_emoji, left_bearing in render_tasks:
+        draw_x = current_x - left_bearing
         if is_emoji:
-            # Drop shadow/stroke for emojis usually looks bad or renders weird boxes
-            draw.text((current_x, center_y), part, font=f, embedded_color=True)
+            draw.text((draw_x, top_y), part, font=f, embedded_color=True)
         else:
-            draw.text((current_x, center_y), part, fill=fill, font=f, stroke_width=stroke_width, stroke_fill=stroke_fill)
-        
-        try:
-            current_x += draw.textlength(part, font=f)
-        except AttributeError:
-            bbox = draw.textbbox((0, 0), part, font=f)
-            current_x += bbox[2] - bbox[0]
+            draw.text((draw_x, top_y), part, fill=fill, font=f, stroke_width=stroke_width, stroke_fill=stroke_fill)
+        bbox = draw.textbbox((0, 0), part, font=f)
+        current_x += bbox[2] - bbox[0]
 
 
 def shorten_name(name: str, max_words: int = 3) -> str:
@@ -156,26 +155,26 @@ def create_slide_1(original_path: str, output_path: str, text: Union[str, None] 
     draw = ImageDraw.Draw(base)
     
     if text:
-        # Use provided text, split by newline if present, or wrap if needed (simple split for now)
-        lines = text.split("\\n")
+        # Accept both literal \n (from captions set in code) and escaped \\n (from LLM output)
+        normalized = text.replace("\\n", "\n")
+        lines = [l for l in normalized.split("\n") if l.strip()]
     else:
         lines = ["HELP!! what should i do", "with this space??"]
-        
-    line_heights = []
-    for ln in lines:
-        b = draw.textbbox((0, 0), ln, font=font)
-        line_heights.append(b[3] - b[1])
-    total_h = sum(line_heights) + 16
+
+    LINE_GAP = 16
+    line_h = _font_line_height(font)
+    n = len(lines)
+    total_h = n * line_h + (n - 1) * LINE_GAP
     start_y = (TARGET_SIZE[1] - total_h) // 2
 
-    emoji_font = _get_emoji_font(72) # Match main font size
+    emoji_font = _get_emoji_font(72)
 
-    for i, line in enumerate(lines):
+    for line in lines:
         draw_text_centered_mixed(
-            draw, line, font, emoji_font, start_y, TARGET_SIZE[0], 
+            draw, line, font, emoji_font, start_y, TARGET_SIZE[0],
             stroke_width=5, stroke_fill="black"
         )
-        start_y += line_heights[i] + 16
+        start_y += line_h + LINE_GAP
 
     base = base.convert("RGB")
     base.save(output_path, "JPEG", quality=95)
@@ -212,63 +211,53 @@ def create_item_slide(
     emoji_font = _get_emoji_font()
 
     lines = full_text.split("\n")
-    total_h = 0
+
+    LINE_GAP = 24
+    TAGLINE_EXTRA_OFFSET = 48  # extra space pushed down before the tagline
+    line_h_large = _font_line_height(font_large)
+    line_h_small = _font_line_height(font_small)
+
     line_heights = []
-    
-    # Measure
     for line in lines:
         is_tagline = (line == tagline_full or line == tagline_fallback) and not force_text
-        
+        line_heights.append(line_h_small if is_tagline else line_h_large)
+
+    # Account for the extra tagline offset in total height so the block stays centered
+    tagline_extra = TAGLINE_EXTRA_OFFSET if (not force_text and len(lines) > 1) else 0
+    n = len(lines)
+    total_h = sum(line_heights) + (n - 1) * LINE_GAP + tagline_extra
+    start_y = (TARGET_SIZE[1] - total_h) // 2
+
+    current_emoji_font = _get_emoji_font(72)
+
+    for i, line in enumerate(lines):
+        is_tagline = (line == tagline_full or line == tagline_fallback) and not force_text
+        if is_tagline:
+            start_y += TAGLINE_EXTRA_OFFSET
+
         if is_tagline and emoji_font and line == tagline_full:
             b_text = draw.textbbox((0, 0), tagline_text, font=font_small)
             b_emoji = draw.textbbox((0, 0), EMOJI, font=emoji_font)
-            h = max(b_text[3] - b_text[1], b_emoji[3] - b_emoji[1])
-        elif is_tagline:
-            bbox = draw.textbbox((0, 0), tagline_fallback, font=font_small)
-            h = bbox[3] - bbox[1]
-        else:
-            # Main text (Regular Name or Custom Text)
-            # FORCE LARGE FONT (Size 72+)
-            font = font_large
-            bbox = draw.textbbox((0, 0), line, font=font)
-            h = bbox[3] - bbox[1]
-        
-        line_heights.append(h)
-        total_h += h + 24
-
-    start_y = (TARGET_SIZE[1] - total_h) // 2
-    
-    # Draw
-    for i, line in enumerate(lines):
-        is_tagline = (line == tagline_full or line == tagline_fallback) and not force_text
-        
-        if is_tagline and emoji_font and line == tagline_full:
-            # Complex emoji tagline drawing
-            tw_text = draw.textbbox((0, 0), tagline_text, font=font_small)[2] - draw.textbbox((0, 0), tagline_text, font=font_small)[0]
-            tw_emoji = draw.textbbox((0, 0), EMOJI, font=emoji_font)[2] - draw.textbbox((0, 0), EMOJI, font=emoji_font)[0]
+            tw_text = b_text[2] - b_text[0]
+            tw_emoji = b_emoji[2] - b_emoji[0]
             total_w = tw_text + tw_emoji
-            tx = (TARGET_SIZE[0] - total_w) // 2
-            ty = start_y
-            draw.text((tx, ty), tagline_text, fill="white", font=font_small, stroke_width=5, stroke_fill="black")
-            draw.text((tx + tw_text, ty), EMOJI, font=emoji_font, embedded_color=True)
-            
+            tx = (TARGET_SIZE[0] - total_w) // 2 - b_text[0]
+            draw.text((tx, start_y), tagline_text, fill="white", font=font_small, stroke_width=5, stroke_fill="black")
+            draw.text((tx + tw_text, start_y), EMOJI, font=emoji_font, embedded_color=True)
+
         elif is_tagline:
-             # Fallback tagline string
-             bbox = draw.textbbox((0, 0), tagline_fallback, font=font_small)
-             tw = bbox[2] - bbox[0]
-             tx = (TARGET_SIZE[0] - tw) // 2
-             ty = start_y
-             draw.text((tx, ty), tagline_fallback, fill="white", font=font_small, stroke_width=5, stroke_fill="black")
-             
+            b = draw.textbbox((0, 0), tagline_fallback, font=font_small)
+            tw = b[2] - b[0]
+            tx = (TARGET_SIZE[0] - tw) // 2 - b[0]
+            draw.text((tx, start_y), tagline_fallback, fill="white", font=font_small, stroke_width=5, stroke_fill="black")
+
         else:
-            # Main Text Drawing
-            current_emoji_font = _get_emoji_font(72) # Match font_large
             draw_text_centered_mixed(
                 draw, line, font_large, current_emoji_font, start_y, TARGET_SIZE[0],
                 stroke_width=5, stroke_fill="black"
             )
-            
-        start_y += line_heights[i] + 24
+
+        start_y += line_heights[i] + LINE_GAP
 
     base.save(output_path, "JPEG", quality=95)
     return output_path
@@ -279,6 +268,7 @@ def edit_carousel(
     item_paths: dict[str, str],
     output_dir: Union[str, Path],
     captions: list[str] = None,
+    fill_mode: bool = False,
 ) -> list[str]:
     """
     Create 6 carousel slides from original + reimagined images.
@@ -307,15 +297,15 @@ def edit_carousel(
         c_idx = i + 1
         force_txt = captions[c_idx] if captions and len(captions) > c_idx else None
         
-        # USER REQUEST: Last slide (normally slide 6, i.e. i=4) should have specific CTA.
-        # Check if this is the last item
-        if i == len(item_paths) - 1:
+        # In non-fill mode, append "Staged AI" to the last slide.
+        # In fill mode, just show the fill idea name as normal.
+        if i == len(item_paths) - 1 and not fill_mode:
             cta = "Staged AI"
             if force_txt:
-                 if cta.lower() not in force_txt.lower():
-                     force_txt = f"{force_txt}\n\n\n{cta}"
+                if cta.lower() not in force_txt.lower():
+                    force_txt = f"{force_txt}\n\n\n{cta}"
             else:
-                 force_txt = cta
+                force_txt = cta
 
         create_item_slide(path, item_name, str(out), include_tagline=(i == 0), force_text=force_txt)
         slide_paths.append(str(out))
@@ -331,7 +321,7 @@ def edit_carousel(
         c_idx = idx - 1 # slide 1 is index 0
         force_txt = captions[c_idx] if captions and len(captions) > c_idx else None
         
-        if idx == 6:
+        if idx == 6 and not fill_mode:
             cta = "Staged AI"
             if force_txt:
                 if cta.lower() not in force_txt.lower():

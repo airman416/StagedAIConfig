@@ -141,13 +141,14 @@ SPACE_TYPES = {
 # Architectural twists randomly added for variety
 ARCHITECTURAL_TWISTS = [
     "The ceiling height changes abruptly above this spot.",
-    "A decorative archway frames this useless space.",
     "A random support beam cuts through the edge of the visual field.",
     "The flooring changes direction or type near this area.",
     "There is an awkwardly placed outlet right in the center of the wall.",
     "A partial half-wall separates this void from the main room.",
     "The lighting is slightly dim in this specific corner.",
     "A window is placed asymmetrically in the space.",
+    "The baseboard trim ends abruptly at the edge of this space.",
+    "The wall paint is slightly different here, as if this area was an afterthought.",
 ]
 
 
@@ -205,8 +206,10 @@ THE PROBLEM AREA (center of the image):
 
 THE SURROUNDINGS (edges / background):
 - The rest of the visible home should look NORMAL and LIVED-IN.
-- Hints of adjacent rooms, hallways, doorways, or staircases should be visible.
-- This creates a contrast: a normal house with this one weird, useless feature.
+- Hints of adjacent walls, baseboards, furniture, or staircases may be visible at the edges.
+- CRITICAL: NO doors, NO doorframes, NO archways, and NO open passages should appear
+  anywhere in the image — not in the nook, not in the background. Doors imply a walkway.
+  This space is sealed on all sides except the opening facing the camera.
 
 ARCHITECTURAL DETAILS:
 - Make the geometry feel slightly "off" or challenging (angles, slopes, tight squeezes).
