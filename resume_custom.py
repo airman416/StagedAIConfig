@@ -86,7 +86,8 @@ def resume_custom_workflow(carousel_dir: str):
 
     # 4. Upload
     print("📤 Uploading...")
-    success = upload_carousel(slide_paths)
+    integration_id = "cmlr80l5303ppmn0y3kjylrl3"
+    success = upload_carousel(slide_paths, integration_id=integration_id)
     if success:
         print("✅ Workflow complete!")
     else:

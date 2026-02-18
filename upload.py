@@ -145,7 +145,7 @@ def post_carousel_to_tiktok(
     return True
 
 
-def upload_carousel(slide_paths: list[str], debug: bool = False) -> bool:
+def upload_carousel(slide_paths: list[str], integration_id: str = None, debug: bool = False) -> bool:
     """Upload slide images to TikTok as draft carousel. Returns True on success."""
     if not slide_paths:
         print("❌ No slides to upload.")
@@ -168,7 +168,8 @@ def upload_carousel(slide_paths: list[str], debug: bool = False) -> bool:
             "thumbnailTimestamp": None,
         })
 
-    return post_carousel_to_tiktok(image_refs, TIKTOK_INTEGRATION_ID, debug=debug)
+    target_id = integration_id or TIKTOK_INTEGRATION_ID
+    return post_carousel_to_tiktok(image_refs, target_id, debug=debug)
 
 
 def main():
@@ -191,6 +192,10 @@ def main():
         action="store_true",
         help="Print the exact JSON payload sent to Postiz",
     )
+    parser.add_argument(
+        "--integration-id",
+        help="Override the default TikTok integration ID",
+    )
     args = parser.parse_args()
 
     if args.from_dir:
@@ -203,7 +208,7 @@ def main():
     else:
         slide_paths = args.slides
 
-    success = upload_carousel(slide_paths, debug=args.debug)
+    success = upload_carousel(slide_paths, integration_id=args.integration_id, debug=args.debug)
     sys.exit(0 if success else 1)
 
 

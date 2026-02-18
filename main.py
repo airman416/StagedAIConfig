@@ -120,7 +120,8 @@ def run_pipeline(image_path: str, fill_mode: bool = False, skip_approval: bool =
         # --- Step 4: Upload ---
         logger.info("📤 [Stage 3/3] Upload to TikTok - Starting...")
         try:
-            result = upload_carousel(slide_paths)
+            integration_id = "cmlr80l5303ppmn0y3kjylrl3" if use_custom_story else None
+            result = upload_carousel(slide_paths, integration_id=integration_id)
             if result:
                 logger.info("✅ [Stage 3/3] Upload complete!")
             else:
