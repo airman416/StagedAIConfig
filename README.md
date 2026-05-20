@@ -15,6 +15,21 @@ Tools to generate, reimagine, and upload interior design content for TikTok.
    ```
    *(Note: `generate_styles.py` also requires `serviceAccountKey.json` for Firebase)*
 
+### GitHub Actions (scheduled fill posts)
+
+The workflow [`.github/workflows/fill-carousel.yml`](.github/workflows/fill-carousel.yml) on **`main`** runs the fill pipeline twice daily at **11:00 AM** and **4:00 PM** Eastern (`America/New_York`, DST-aware), plus manual runs.
+
+**Repository secrets** (Settings → Secrets and variables → Actions):
+
+| Secret | Purpose |
+|--------|---------|
+| `GEMINI_API_KEY` | Image generation |
+| `ZERNIO_API_KEY` | TikTok carousel upload |
+
+**Manual run:** Actions → *Fill Carousel Pipeline* → *Run workflow*.
+
+Generated carousels are **not** committed to the repo. Failed runs upload debug artifacts and emit a workflow error (enable GitHub email notifications for workflow failures).
+
 ---
 
 ## Content Pipelines

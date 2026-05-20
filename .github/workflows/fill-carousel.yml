@@ -1,0 +1,84 @@
+name: Fill Carousel Pipeline
+
+# Scheduled workflows run from the default branch (main). Code is merged from custom.
+# Cron is UTC; a time gate ensures runs only at 11:00 and 16:00 America/New_York (DST-aware).
+on:
+  schedule:
+    - cron: "5 14 * * *"
+    - cron: "5 15 * * *"
+    - cron: "5 19 * * *"
+    - cron: "5 20 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: fill-carousel
+  cancel-in-progress: false
+
+jobs:
+  eastern-time-gate:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+    steps:
+      - name: Check 11:00 or 16:00 Eastern
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            echo "Manual trigger — running pipeline."
+            exit 0
+          fi
+          export TZ=America/New_York
+          hour=$(date +%H)
+          echo "America/New_York local hour: $hour"
+          if [ "$hour" = "11" ] || [ "$hour" = "16" ]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping — not 11:00 or 16:00 Eastern."
+          fi
+
+  fill-carousel:
+    needs: eastern-time-gate
+    if: needs.eastern-time-gate.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run fill pipeline (random nook, upload to TikTok draft)
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ZERNIO_API_KEY: ${{ secrets.ZERNIO_API_KEY }}
+        run: python main.py -f -y
+
+      - name: Upload debug artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-debug-${{ github.run_id }}
+          path: |
+            carousel_*/
+            generated_source_*
+          if-no-files-found: ignore
+
+  notify-failure:
+    needs: fill-carousel
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report failure
+        run: |
+          echo "::error::Fill carousel pipeline failed."
+          echo "Run log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo "Subscribe to workflow failures in GitHub notification settings for email alerts."
