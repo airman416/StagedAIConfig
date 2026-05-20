@@ -25,6 +25,9 @@ The workflow [`.github/workflows/fill-carousel.yml`](.github/workflows/fill-caro
 |--------|---------|
 | `GEMINI_API_KEY` | Image generation |
 | `ZERNIO_API_KEY` | TikTok carousel upload |
+| `NTFY_API_KEY` | Push notifications (ntfy access token, `tk_...`) |
+
+**ntfy:** Subscribe to topic **`stagedai-fill-carousel`** in the [ntfy app](https://ntfy.sh/app) (or open `https://ntfy.sh/stagedai-fill-carousel`). You get a push on every successful run and on failures.
 
 **Manual run:** Actions → *Fill Carousel Pipeline* → *Run workflow*.
 

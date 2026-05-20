@@ -17,6 +17,9 @@ concurrency:
   group: fill-carousel
   cancel-in-progress: false
 
+env:
+  NTFY_TOPIC: stagedai-fill-carousel
+
 jobs:
   eastern-time-gate:
     runs-on: ubuntu-latest
@@ -75,13 +78,35 @@ jobs:
             generated_source_*
           if-no-files-found: ignore
 
+  notify-success:
+    needs: fill-carousel
+    if: success()
+    runs-on: ubuntu-latest
+    steps:
+      - name: ntfy — success
+        run: |
+          curl -sS -f \
+            -H "Authorization: Bearer ${{ secrets.NTFY_API_KEY }}" \
+            -H "Title: TikTok fill carousel posted" \
+            -H "Tags: white_check_mark" \
+            -H "Priority: default" \
+            -d "Fill pipeline finished. TikTok inbox draft should be ready.
+          Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            "https://ntfy.sh/${{ env.NTFY_TOPIC }}"
+
   notify-failure:
     needs: fill-carousel
     if: failure()
     runs-on: ubuntu-latest
     steps:
-      - name: Report failure
+      - name: ntfy — failure
         run: |
           echo "::error::Fill carousel pipeline failed."
-          echo "Run log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          echo "Subscribe to workflow failures in GitHub notification settings for email alerts."
+          curl -sS -f \
+            -H "Authorization: Bearer ${{ secrets.NTFY_API_KEY }}" \
+            -H "Title: TikTok fill carousel FAILED" \
+            -H "Tags: rotating_light" \
+            -H "Priority: urgent" \
+            -d "Fill pipeline failed. Check Actions logs.
+          Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            "https://ntfy.sh/${{ env.NTFY_TOPIC }}" || true
