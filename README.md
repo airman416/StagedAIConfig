@@ -11,7 +11,7 @@ Tools to generate, reimagine, and upload interior design content for TikTok.
 2. **Configuration**: Create a `.env` file:
    ```env
    GEMINI_API_KEY=your_gemini_key
-   POSTIZ_API_KEY=your_postiz_key
+   ZERNIO_API_KEY=your_zernio_key
    ```
    *(Note: `generate_styles.py` also requires `serviceAccountKey.json` for Firebase)*
 
@@ -118,9 +118,12 @@ python reimagine.py path/to/image.jpg -f     # fill mode: 3 fill ideas
 
 ### `upload.py` — Upload Pre-made Slides
 
+Uploads to TikTok as an inbox draft via Zernio (`PUBLIC_TO_EVERYONE`, scheduled ~2 minutes out).
+
 ```bash
 python upload.py slide1.jpg slide2.jpg slide3.jpg
 python upload.py --from-dir ./carousel_output/slides/
+python upload.py --fill --from-dir ./carousel_output/slides/   # fill-pipeline captions
 ```
 
 ### `generate_styles.py` — Admin / Firebase Update

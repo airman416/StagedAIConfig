@@ -10,7 +10,7 @@ from upload import upload_carousel
 from screen_text import generate_screen_text
 from reimagine import init_gemini
 
-# Load environment variables for Gemini (to re-gen captions) and Postiz
+# Load environment variables for Gemini (to re-gen captions) and Zernio
 load_dotenv()
 
 def resume_custom_workflow(carousel_dir: str):
@@ -86,8 +86,7 @@ def resume_custom_workflow(carousel_dir: str):
 
     # 4. Upload
     print("📤 Uploading...")
-    integration_id = "cmlr80l5303ppmn0y3kjylrl3"
-    success = upload_carousel(slide_paths, integration_id=integration_id)
+    success = upload_carousel(slide_paths)
     if success:
         print("✅ Workflow complete!")
     else:

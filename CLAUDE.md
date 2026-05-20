@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-A Python CLI toolkit that generates TikTok carousel posts for interior design content. Three content pipelines, all ending in a TikTok carousel draft uploaded via Postiz API.
+A Python CLI toolkit that generates TikTok carousel posts for interior design content. Three content pipelines, all ending in a TikTok carousel draft uploaded via Zernio API.
 
 ## Content Pipelines
 
@@ -32,7 +32,7 @@ pip install -r requirements.txt
 Required `.env`:
 ```
 GEMINI_API_KEY=...
-POSTIZ_API_KEY=...
+ZERNIO_API_KEY=...
 ```
 
 `generate_styles.py` additionally needs `serviceAccountKey.json` for Firebase.
@@ -66,6 +66,7 @@ python main.py path/to/image.jpg -y       # Skip approval prompts
 python reimagine.py path/to/image.jpg     # Generation only (no upload)
 python upload.py slide1.jpg slide2.jpg    # Upload pre-made images
 python upload.py --from-dir ./slides/
+python upload.py --fill --from-dir ./slides/  # Fill title/description pool
 python generate_styles.py new_styles.txt  # Add styles to Firebase
 ```
 
@@ -82,29 +83,31 @@ python generate_styles.py new_styles.txt  # Add styles to Firebase
 
 **`edit.py`** — Pillow-based overlay. Composites `circle.png` on slide 1 and renders text with `TikTokSans-Regular.ttf`. Output is 1080×1920 (9:16 TikTok). Assets (`circle.png`, font file) must stay in the repo root alongside `edit.py`.
 
-**`upload.py`** — Posts to Postiz API (`https://api.postiz.com/public/v1`). Uploads images one at a time then groups them as a carousel post. `TIKTOK_INTEGRATION_ID` and a secondary custom integration ID are hardcoded constants.
+**`upload.py`** — Posts to Zernio API (`https://zernio.com/api/v1`). Uploads each slide via `POST /v1/media/upload-direct`, then creates a scheduled TikTok photo carousel with `tiktokSettings.draft: true`. Account ID is hardcoded (`TIKTOK_ACCOUNT_ID`). Prefetches creator info via `GET /v1/accounts/{id}/tiktok/creator-info?mediaType=photo` to validate privacy levels.
 
 **`screen_text.py`** — Generates narrative slide captions using Gemini. Uses `STORY_EXAMPLES` templates and `CHARACTERS` list to produce a 6-slide story arc.
 
 **`generate_styles.py`** — Admin tool for Firebase Remote Config. Uses `firebase-admin` SDK with `serviceAccountKey.json` to read/write interior design style definitions.
 
-## Publora API
+## Zernio API
 
-When answering questions about Publora, always crawl the official docs at `https://github.com/publora/publora-api-docs` (raw files via `raw.githubusercontent.com`). Do NOT rely on the Publora MCP tool schemas — they are incomplete and mark fields like `scheduledTime` as required when the actual API treats them as optional. Key doc paths:
+TikTok integration docs: `docs/ZERNIO_DOCS.md` and https://docs.zernio.com/llms-full.txt
 
-- `docs/endpoints/create-post.md` — create-post parameters, draft vs scheduled
-- `docs/endpoints/upload-media.md` — get-upload-url workflow
-- `docs/guides/media-uploads.md` — carousel upload pattern (call get-upload-url once per image with the same postGroupId)
-- `docs/guides/scheduling.md` — draft/schedule lifecycle
-- `docs/platforms/tiktok.md` — TikTok-specific constraints
+Key endpoints used by `upload.py`:
+- `POST /v1/media/upload-direct` — Bearer auth, multipart `file` field, returns public `url`
+- `GET /v1/accounts/{accountId}/tiktok/creator-info?mediaType=photo` — allowed privacy levels
+- `POST /v1/posts` — photo carousel with `tiktokSettings.draft: true`, `scheduledFor` (+2 min)
 
-**TikTok carousel note:** As of the current docs, Publora's TikTok integration is **video-only**. Photo carousel/Photo Mode is not supported via their API. TikTok carousels must continue to use Postiz (`upload.py`).
+TikTok photo carousel fields:
+- Top-level `content` — photo title (90 chars max; hashtags stripped by TikTok)
+- `tiktokSettings.description` — full caption (up to 4,000 chars)
+- `tiktokSettings.privacy_level` — `PUBLIC_TO_EVERYONE` when allowed
+- `tiktokSettings.draft: true` — sends to TikTok Creator Inbox (not Zernio dashboard-only draft)
+- `tiktokSettings.auto_add_music: true` — recommended music on photo carousels
 
 ## Key Conventions
 
 - All scripts load `.env` at module top via `python-dotenv` and raise `ValueError` immediately if required keys are missing.
 - Output directories are named `carousel_YYYY-MM-DD_HH-MM-SS/` in the cwd. Slides land in a `slides/` subdirectory.
 - `reimagine.py` exports `init_gemini()` — other modules import from it rather than each initializing separately.
-- The Postiz integration ID for the "custom story" account differs from the default (`use_custom_story` flag in `main.py`). Postfast is the default; Postiz is legacy.
-- Postfast account lookup uses the `platformUsername` field (not `username`/`handle`/`name`) from `GET /social-media/my-social-accounts`.
-- TikTok draft settings: `tiktokIsDraft: true`, `tiktokPrivacy: "ONLY_ME"` (not `SELF_ONLY` — that value is rejected by Postfast). Drafts appear in TikTok Inbox → System Notifications.
+- TikTok drafts appear in TikTok Inbox → System Notifications after Zernio processes the scheduled post.
