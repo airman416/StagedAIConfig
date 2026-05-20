@@ -4,10 +4,13 @@ name: Fill Carousel Pipeline
 # Cron is UTC; a time gate ensures runs only at 11:00 and 16:00 America/New_York (DST-aware).
 on:
   schedule:
+    # Four slots for EDT (UTC-4); two extra for EST (UTC-5). Gate keeps only 11:00 & 16:00 Eastern.
     - cron: "5 14 * * *"
     - cron: "5 15 * * *"
+    - cron: "5 16 * * *"
     - cron: "5 19 * * *"
     - cron: "5 20 * * *"
+    - cron: "5 21 * * *"
   workflow_dispatch:
 
 concurrency:
