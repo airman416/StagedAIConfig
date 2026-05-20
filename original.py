@@ -1,17 +1,27 @@
 #!/usr/bin/env python3
 """
-Original "Problem Space" Image Generator
+Source Image Generator
 
-Generates photorealistic images of lived-in homes with a specific "problem area"
--- an unused or empty spot that begs to be filled. These images serve as input
-to the carousel pipeline (main.py -> reimagine -> edit -> upload).
+Two modes for generating starting images for the carousel pipeline:
 
-Usage:
-  python original.py                                      # Random space, 1 image
-  python original.py --space confusing_alcove             # Specific space type
-  python original.py --count 3                            # Generate 3 images to pick from
-  python original.py --space bay_window_nook -n 3         # 3 specific images
-  python original.py --list                               # List all space types
+DEFAULT (no flag) — Photorealistic Room
+  Generates a candid smartphone-style photo of a lived-in, average home interior.
+  Use as input for the standard style-reimagine pipeline or the custom story pipeline.
+
+  python original.py               # 1 random room
+  python original.py -n 3          # 3 room variants to pick from
+  Feed into: python main.py <image>
+             python main.py <image> --custom   (story captions)
+
+FILL MODE (--fill / -f) — Problem Space
+  Generates a photorealistic image of an awkward, undefined nook or empty corner
+  that "begs to be filled". Use as input for the fill-ideas pipeline.
+
+  python original.py --fill                          # 1 random problem space
+  python original.py --fill --space confusing_alcove # Specific space type
+  python original.py --fill -n 3                     # 3 images to pick from
+  python original.py --list                          # List all space types
+  Feed into: python main.py <image> -f
 """
 
 import os
@@ -40,6 +50,7 @@ def init_gemini():
 
 # ---------------------------------------------------------------------------
 # Space types: each entry describes the problem area AND the lived-in context
+# (used in fill mode only)
 # ---------------------------------------------------------------------------
 
 SPACE_TYPES = {
@@ -138,7 +149,7 @@ SPACE_TYPES = {
     },
 }
 
-# Architectural twists randomly added for variety
+# Architectural twists randomly added for variety (fill mode only)
 ARCHITECTURAL_TWISTS = [
     "The ceiling height changes abruptly above this spot.",
     "A random support beam cuts through the edge of the visual field.",
@@ -152,14 +163,11 @@ ARCHITECTURAL_TWISTS = [
 ]
 
 
-def build_prompt(space_type: str, dated_look: bool = False) -> str:
-    """Build the image generation prompt for a given space type."""
-    info = SPACE_TYPES[space_type]
-    twist = random.choice(ARCHITECTURAL_TWISTS)
+def build_prompt(fill_mode: bool = False, space_type: str = None) -> str:
+    """Build the image generation prompt. fill_mode=True → problem space nook; False → regular room."""
+    if not fill_mode:
+        return """Generate a photorealistic image taken inside an AVERAGE, SLIGHTLY UNKEMPT residential home.
 
-    if dated_look:
-        return f"""Generate a photorealistic image taken inside an AVERAGE, SLIGHTLY UNKEMPT residential home.
-        
 STYLE & VIBE:
 - This is a REGULAR person's house, not a wealthy home.
 - It looks LIVED-IN and slightly cluttered/messy (but not filthy).
@@ -181,7 +189,10 @@ CRITICAL:
 - NO people, NO pets.
 - NO text.
 - Portrait orientation (9:16)."""
-    
+
+    info = SPACE_TYPES[space_type]
+    twist = random.choice(ARCHITECTURAL_TWISTS)
+
     return f"""Generate a photorealistic image taken inside a LIVED-IN residential home.
 The camera is pointed at a specific AWKWARD, UNDEFINED space -- an area where the
 intended use is completely unclear ("liminal space").
@@ -223,12 +234,20 @@ CRITICAL:
 - Portrait orientation (9:16)."""
 
 
-def generate_original(client, space_type: str, output_path: str, dated_look: bool = False) -> Union[str, None]:
-    """Generate a single original image for the given space type."""
-    prompt = build_prompt(space_type, dated_look=dated_look)
-    label = SPACE_TYPES[space_type]["label"]
-    if dated_look:
-        label += " (Dated Look)"
+def generate_original(client, output_path: str, fill_mode: bool = False, space_type: str = None) -> Union[str, None]:
+    """
+    Generate a single source image.
+
+    fill_mode=False (default): photorealistic lived-in room for style reimagine pipeline.
+    fill_mode=True: awkward problem-space nook for the fill-ideas pipeline.
+    space_type is only used (and required) when fill_mode=True.
+    """
+    prompt = build_prompt(fill_mode=fill_mode, space_type=space_type)
+
+    if fill_mode:
+        label = SPACE_TYPES[space_type]["label"]
+    else:
+        label = "Photorealistic Room"
 
     print(f"🎨 Generating: {label}...")
 
@@ -262,22 +281,37 @@ def generate_original(client, space_type: str, output_path: str, dated_look: boo
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Generate photorealistic 'problem space' images for the carousel pipeline",
+        description="Generate source images for the carousel pipeline",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
+Modes:
+  (default)  Photorealistic room — lived-in home, any style; input for reimagine/story pipeline
+  --fill     Problem space — awkward empty nook; input for fill-ideas pipeline
+
 Examples:
-  python original.py                                      # Random space type, 1 image
-  python original.py --space confusing_alcove             # Generate specific image
-  python original.py --count 3                            # Generate 3 random images
-  python original.py --space bay_window_nook -n 3         # 3 specific images
-  python original.py --list                               # Show all space types
+  python original.py                                      # 1 photorealistic room
+  python original.py -n 3                                 # 3 rooms to pick from
+  python original.py --fill                               # 1 random problem space
+  python original.py --fill --space confusing_alcove      # Specific space type
+  python original.py --fill -n 3                          # 3 problem space images
+  python original.py --list                               # Show all space types (fill mode)
+
+Feed into main.py:
+  python main.py <image>              # reimagine in 5 styles
+  python main.py <image> --custom     # reimagine + story captions
+  python main.py <image> -f           # fill-ideas pipeline (use --fill images here)
         """,
+    )
+    parser.add_argument(
+        "-f", "--fill",
+        action="store_true",
+        help="Fill mode: generate a problem-space nook image (for use with main.py -f)",
     )
     parser.add_argument(
         "--space",
         choices=list(SPACE_TYPES.keys()),
         default=None,
-        help="Space type to generate (random if not specified)",
+        help="Space type to generate (fill mode only; random if not specified)",
     )
     parser.add_argument(
         "-n", "--count",
@@ -293,61 +327,77 @@ Examples:
     parser.add_argument(
         "--list",
         action="store_true",
-        help="List all available space types and exit",
+        help="List all available space types (fill mode) and exit",
     )
     args = parser.parse_args()
 
     # List mode
     if args.list:
-        print("\n📋 Available space types:\n")
+        print("\n📋 Available space types (for --fill mode):\n")
         for key, info in SPACE_TYPES.items():
             print(f"  {key:24s} {info['label']}")
         print(f"\n  Total: {len(SPACE_TYPES)} types")
+        print("\n  Use with: python original.py --fill --space <space_type>")
         return
 
-    # Validate count
     if args.count < 1:
         print("❌ --count must be at least 1")
         return
 
-    # Resolve output directory
+    if args.space and not args.fill:
+        print("⚠️  --space is only used in --fill mode. Switching to fill mode.")
+        args.fill = True
+
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Initialize Gemini
     client = init_gemini()
 
-    # Build generation tasks
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     tasks = []
     for i in range(args.count):
-        space = args.space if args.space else random.choice(list(SPACE_TYPES.keys()))
-        if args.count == 1:
-            filename = f"original_{space}_{timestamp}.png"
+        if args.fill:
+            space = args.space if args.space else random.choice(list(SPACE_TYPES.keys()))
+            label_part = space
         else:
-            filename = f"original_{space}_{timestamp}_{i + 1}.png"
+            space = None
+            label_part = "room"
+
+        if args.count == 1:
+            filename = f"original_{label_part}_{timestamp}.png"
+        else:
+            filename = f"original_{label_part}_{timestamp}_{i + 1}.png"
         output_path = str(output_dir / filename)
         tasks.append((space, output_path))
 
-    # Generate
+    mode_label = "problem space" if args.fill else "photorealistic room"
+
     if len(tasks) == 1:
         space, output_path = tasks[0]
-        print(f"\n🏠 Space type: {SPACE_TYPES[space]['label']}")
-        result = generate_original(client, space, output_path)
+        if args.fill:
+            print(f"\n🏠 Space type: {SPACE_TYPES[space]['label']}")
+        else:
+            print(f"\n🏠 Mode: Photorealistic room")
+        result = generate_original(client, output_path, fill_mode=args.fill, space_type=space)
         if result:
             print(f"\n✅ Done! Use with the pipeline:")
-            print(f"   python main.py {result}")
+            if args.fill:
+                print(f"   python main.py {result} -f")
+            else:
+                print(f"   python main.py {result}")
+                print(f"   python main.py {result} --custom   # with story captions")
     else:
-        print(f"\n🚀 Generating {len(tasks)} images in parallel...\n")
-        for space, _ in tasks:
-            print(f"  🏠 {SPACE_TYPES[space]['label']}")
+        print(f"\n🚀 Generating {len(tasks)} {mode_label} images in parallel...\n")
+        if args.fill:
+            for space, _ in tasks:
+                print(f"  🏠 {SPACE_TYPES[space]['label']}")
         print()
 
         results = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(tasks), 5)) as executor:
             futures = {}
             for space, output_path in tasks:
-                fut = executor.submit(generate_original, client, space, output_path)
+                fut = executor.submit(generate_original, client, output_path, args.fill, space)
                 futures[fut] = output_path
             for fut in concurrent.futures.as_completed(futures):
                 try:
@@ -361,7 +411,10 @@ Examples:
         if results:
             print("   Use any with the pipeline:")
             for r in sorted(results):
-                print(f"   python main.py {r}")
+                if args.fill:
+                    print(f"   python main.py {r} -f")
+                else:
+                    print(f"   python main.py {r}")
 
 
 if __name__ == "__main__":

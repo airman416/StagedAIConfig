@@ -2,20 +2,28 @@
 """
 Carousel Pipeline Orchestrator
 
-Runs the full carousel workflow:
-1. reimagine  - Generate original + 5 reimagined images (interior styles OR fill ideas)
-2. edit       - Apply text/circle overlays (slide 1: HELP!! + circle; slides 2-6: style name + tagline)
-3. upload     - Upload to TikTok as draft
+Three content pipelines, all ending in a TikTok carousel draft:
 
-Two reimagine modes:
-- Interior design (default): Identifies 5 styles, reimagines the room in each
-- Fill (-f): Brainstorms 5 ideas to fill empty space, generates filled versions
+  STYLE PIPELINE (default)
+    A photorealistic room reimagined in 5 interior design styles.
+    Source: any room photo, or auto-generated via original.py (no flag).
+    python main.py <image>
 
-Usage:
-  python main.py <image_path>                    # Interior design styles
-  python main.py <image_path> -f                  # Fill empty space ideas
-  python main.py <image_path> -y                  # Skip approval prompts
-  python main.py <image_path> -f -y              # Fill mode, no prompts
+  STORY PIPELINE (--custom)
+    Same as style, but slide captions are AI-generated narrative text
+    (someone showing a skeptical family member the AI redesigns).
+    python main.py <image> --custom
+
+  FILL PIPELINE (-f)
+    An awkward empty nook shown with 5 creative fill ideas.
+    Source: problem-space photo, or auto-generated via original.py --fill.
+    python main.py <image> -f
+
+Auto-generation (omit image_path):
+  python main.py                    # auto-generate room → style pipeline
+  python main.py --custom           # auto-generate room → story pipeline
+  python main.py -f                 # auto-generate problem space → fill pipeline
+  python main.py -f --space alcove  # specific problem space → fill pipeline
 """
 
 import os
@@ -145,13 +153,15 @@ def main():
         description="Generate carousel and upload to TikTok draft",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Reimagine modes:
-  (default) Interior design - Identifies 5 styles, reimagines room in each
-  -f       Fill            - Brainstorms 5 ideas to fill empty space (4 good + 1 silly)
+Pipelines:
+  (default)  Style  — room reimagined in 5 interior design styles
+  --custom   Story  — same as style, but with AI narrative captions
+  -f         Fill   — empty nook shown with 5 creative fill ideas
 
-Automatic Generation:
-  If no image_path is provided, the script will generate a specific "problem space"
-  image (using original.py) before running the pipeline.
+Auto-generation (omit image_path):
+  python main.py              # generate room → style pipeline
+  python main.py --custom     # generate room → story pipeline
+  python main.py -f           # generate problem space → fill pipeline
         """,
     )
     parser.add_argument(
@@ -174,7 +184,7 @@ Automatic Generation:
     parser.add_argument(
         "--space",
         choices=list(SPACE_TYPES.keys()),
-        help="Specific space type to generate (only used if image_path is omitted)",
+        help="Problem space type to generate (fill mode only; ignored if image_path is provided)",
     )
     parser.add_argument(
         "--captions",
@@ -200,27 +210,31 @@ Automatic Generation:
         logger.info("🏗️  No image provided. [Stage 0] Generating source image...")
         try:
             client = init_gemini()
-            
-            # Decide space type
-            space_type = args.space if args.space else random.choice(list(SPACE_TYPES.keys()))
-            logger.info(f"   Selected space type: {space_type}")
-            
-            # Create a temp output path for the source
+
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            generated_filename = f"generated_source_{space_type}_{timestamp}.png"
-            pipeline_image_path = str(Path.cwd() / generated_filename)
-            
-            generated_path = generate_original(client, space_type, pipeline_image_path, dated_look=args.custom)
-            
+
+            if args.fill:
+                # Fill pipeline: generate a problem-space nook image
+                space_type = args.space if args.space else random.choice(list(SPACE_TYPES.keys()))
+                logger.info(f"   Fill mode — generating problem space: {space_type}")
+                generated_filename = f"generated_source_{space_type}_{timestamp}.png"
+                pipeline_image_path = str(Path.cwd() / generated_filename)
+                generated_path = generate_original(client, pipeline_image_path, fill_mode=True, space_type=space_type)
+            else:
+                # Style/story pipeline: generate a photorealistic lived-in room
+                logger.info("   Generating photorealistic room source image")
+                generated_filename = f"generated_source_room_{timestamp}.png"
+                pipeline_image_path = str(Path.cwd() / generated_filename)
+                generated_path = generate_original(client, pipeline_image_path, fill_mode=False)
+
             if not generated_path:
                 logger.error("❌ Failed to generate source image.")
                 sys.exit(1)
-                
+
             logger.info(f"✅ Generated source image: {generated_path}")
-            
+
             # If user didn't auto-confirm, ask if they like the source
             if not args.yes:
-                # We can't easily show it in CLI, but we can pause
                 print(f"   (Open {generated_filename} to check it)")
                 resp = input("Proceed with this source image? (y/n): ").lower().strip()
                 if resp not in ("y", "yes"):

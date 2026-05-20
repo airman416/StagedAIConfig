@@ -2,8 +2,8 @@
 """
 TikTok Carousel Upload
 
-Uploads carousel slides to TikTok as DRAFT via Postiz API.
-Expects pre-edited slide images (from edit.py).
+Uploads carousel slides to TikTok as a scheduled (SELF_ONLY) post via Postfast API.
+Falls back to Postiz when an explicit integration_id is provided (legacy/custom-story path).
 
 Usage:
   python upload.py <slide1.jpg> <slide2.jpg> ...
@@ -12,6 +12,7 @@ Usage:
 
 import json
 import os
+import random
 import sys
 import datetime
 from pathlib import Path
@@ -23,33 +24,19 @@ from nanoid import generate
 
 load_dotenv()
 
-POSTIZ_API_KEY = os.getenv("POSTIZ_API_KEY")
-if not POSTIZ_API_KEY:
-    raise ValueError("POSTIZ_API_KEY not found in .env")
+POSTFAST_API_KEY = os.getenv("POSTFAST_API_KEY")
+if not POSTFAST_API_KEY:
+    raise ValueError("POSTFAST_API_KEY not found in .env")
 
+POSTFAST_BASE = "https://api.postfa.st"
+POSTFAST_CHANNEL = "kim.designs8"
+
+# Postiz (legacy — used only when integration_id is explicitly passed)
+POSTIZ_API_KEY = os.getenv("POSTIZ_API_KEY")
 POSTIZ_BASE = "https://api.postiz.com/public/v1"
 TIKTOK_INTEGRATION_ID = "cmljzps6w01xzol0y7l9889vh"
 
-# Postiz-style IDs for group (no API returns this; nanoid used as fallback)
 ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-
-
-def upload_to_postiz(file_path: str) -> Union[dict, None]:
-    """Upload a file to Postiz and return full response with id, path, etc."""
-    with open(file_path, "rb") as f:
-        r = requests.post(
-            f"{POSTIZ_BASE}/upload",
-            headers={"Authorization": POSTIZ_API_KEY},
-            files={"file": (os.path.basename(file_path), f, "image/jpeg")},
-            timeout=60,
-        )
-    if r.status_code not in (200, 201):
-        print(f"❌ Upload failed for {file_path}: {r.status_code} {r.text}")
-        return None
-    return r.json()
-
-
-import random
 
 CAPTIONS = [
     "help me decide 😭 style 1, 2, 3, or 4??",
@@ -73,20 +60,148 @@ CAPTIONS = [
     "can't decide on the vibe... 1 or 4??",
 ]
 
+# ── Postfast ──────────────────────────────────────────────────────────────────
 
-def post_carousel_to_tiktok(
+_social_media_id_cache: dict[str, str] = {}
+
+
+def get_social_media_id(channel_name: str) -> Union[str, None]:
+    """Return the Postfast socialMediaId for the given channel username."""
+    if channel_name in _social_media_id_cache:
+        return _social_media_id_cache[channel_name]
+    r = requests.get(
+        f"{POSTFAST_BASE}/social-media/my-social-accounts",
+        headers={"pf-api-key": POSTFAST_API_KEY},
+        timeout=30,
+    )
+    if r.status_code != 200:
+        print(f"❌ Failed to fetch social accounts: {r.status_code} {r.text}")
+        return None
+    accounts = r.json()
+    if not isinstance(accounts, list):
+        accounts = accounts.get("data", [])
+    for acct in accounts:
+        handle = (
+            acct.get("platformUsername")
+            or acct.get("username")
+            or acct.get("handle")
+            or acct.get("name")
+            or ""
+        )
+        if handle == channel_name:
+            _social_media_id_cache[channel_name] = acct["id"]
+            return acct["id"]
+    names = [acct.get("platformUsername") or acct.get("username") or acct.get("handle") or acct.get("name") for acct in accounts]
+    print(f"❌ No Postfast account found with username '{channel_name}'")
+    print(f"   Available: {names}")
+    return None
+
+
+def upload_to_postfast(file_path: str) -> Union[str, None]:
+    """Get a pre-signed S3 URL, upload the file, return the S3 key."""
+    r = requests.post(
+        f"{POSTFAST_BASE}/file/get-signed-upload-urls",
+        headers={"pf-api-key": POSTFAST_API_KEY, "Content-Type": "application/json"},
+        json={"contentType": "image/jpeg", "count": 1},
+        timeout=30,
+    )
+    if r.status_code not in (200, 201):
+        print(f"❌ Failed to get signed URL for {file_path}: {r.status_code} {r.text}")
+        return None
+    data = r.json()
+    item = data[0] if isinstance(data, list) else data
+    signed_url = item["signedUrl"]
+    key = item["key"]
+
+    with open(file_path, "rb") as f:
+        put_r = requests.put(
+            signed_url,
+            data=f,
+            headers={"Content-Type": "image/jpeg"},
+            timeout=120,
+        )
+    if put_r.status_code not in (200, 204):
+        print(f"❌ S3 upload failed for {file_path}: {put_r.status_code} {put_r.text}")
+        return None
+    return key
+
+
+def post_carousel_via_postfast(
+    keys: list[str],
+    social_media_id: str,
+    caption: str = "",
+    debug: bool = False,
+) -> bool:
+    """Post a TikTok photo carousel via Postfast as a draft, visible only to the creator."""
+    schedule_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=2)
+    content = caption or random.choice(CAPTIONS)
+
+    payload = {
+        "posts": [
+            {
+                "content": content,
+                "mediaItems": [
+                    {"key": k, "type": "IMAGE", "sortOrder": i}
+                    for i, k in enumerate(keys)
+                ],
+                "scheduledAt": schedule_time.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+                "socialMediaId": social_media_id,
+            }
+        ],
+        "controls": {
+            "tiktokIsDraft": True,
+            "tiktokPrivacy": "ONLY_ME",
+            "tiktokAllowComments": True,
+        },
+    }
+
+    if debug:
+        print("\n--- Postfast payload ---")
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        print("--- End payload ---\n")
+
+    r = requests.post(
+        f"{POSTFAST_BASE}/social-posts",
+        headers={"pf-api-key": POSTFAST_API_KEY, "Content-Type": "application/json"},
+        json=payload,
+        timeout=60,
+    )
+    if r.status_code not in (200, 201):
+        print(f"❌ Failed to post carousel via Postfast: {r.status_code} {r.text}")
+        return False
+
+    print(f"✅ Carousel posted as draft (find it in TikTok Inbox → System Notifications)")
+    return True
+
+
+# ── Postiz (legacy) ───────────────────────────────────────────────────────────
+
+def _upload_to_postiz(file_path: str) -> Union[dict, None]:
+    if not POSTIZ_API_KEY:
+        print("❌ POSTIZ_API_KEY not set — cannot use legacy Postiz path")
+        return None
+    with open(file_path, "rb") as f:
+        r = requests.post(
+            f"{POSTIZ_BASE}/upload",
+            headers={"Authorization": POSTIZ_API_KEY},
+            files={"file": (os.path.basename(file_path), f, "image/jpeg")},
+            timeout=60,
+        )
+    if r.status_code not in (200, 201):
+        print(f"❌ Upload failed for {file_path}: {r.status_code} {r.text}")
+        return None
+    return r.json()
+
+
+def _post_carousel_via_postiz(
     image_refs: list[dict], integration_id: str, caption: str = "", debug: bool = False
 ) -> bool:
-    """Post carousel to TikTok as SELF_ONLY, scheduled 2 min from now."""
     schedule_time = (
         datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=2)
     )
-    # Format date without timezone suffix to match Postiz expected format
     date_str = schedule_time.strftime("%Y-%m-%dT%H:%M:%S")
-
     content = caption or random.choice(CAPTIONS)
 
-    # Matches working Postiz format exactly; image ids come from upload response
     payload = {
         "type": "schedule",
         "tags": [],
@@ -120,63 +235,88 @@ def post_carousel_to_tiktok(
             }
         ],
     }
-    # ensure_ascii=False so emoji 😭 is sent as literal character, not \ud83d\ude2d
     body = json.dumps(payload, ensure_ascii=False, default=str)
 
     if debug:
-        print("\n--- Request payload (matches Postiz format) ---\n")
+        print("\n--- Postiz payload ---")
         print(json.dumps(payload, indent=2, ensure_ascii=False, default=str))
-        print("\n--- End payload ---\n")
+        print("--- End payload ---\n")
 
     r = requests.post(
         f"{POSTIZ_BASE}/posts",
-        headers={
-            "Authorization": POSTIZ_API_KEY,
-            "Content-Type": "application/json",
-        },
+        headers={"Authorization": POSTIZ_API_KEY, "Content-Type": "application/json"},
         data=body.encode("utf-8"),
         timeout=60,
     )
     if r.status_code not in (200, 201):
-        print(f"❌ Failed to post to TikTok: {r.status_code} {r.text}")
+        print(f"❌ Failed to post to TikTok via Postiz: {r.status_code} {r.text}")
         return False
     print(f"✅ Carousel scheduled for {schedule_time.strftime('%H:%M:%S UTC')} (2 min from now)")
     print("   It will post to TikTok as SELF_ONLY. Change visibility when ready to publish.")
     return True
 
 
-def upload_carousel(slide_paths: list[str], integration_id: str = None, debug: bool = False) -> bool:
-    """Upload slide images to TikTok as draft carousel. Returns True on success."""
+# ── Public API ────────────────────────────────────────────────────────────────
+
+def upload_carousel(
+    slide_paths: list[str],
+    integration_id: str = None,
+    debug: bool = False,
+    caption: str = "",
+) -> bool:
+    """Upload slides as a TikTok photo carousel.
+
+    Default: Postfast (kim.designs8 channel).
+    Legacy: pass integration_id to route through Postiz instead.
+    """
     if not slide_paths:
         print("❌ No slides to upload.")
         return False
 
-    print("\n📤 Uploading to Postiz...")
-    image_refs = []
     for p in slide_paths:
         if not os.path.exists(p):
             print(f"❌ Slide not found: {p}")
             return False
-        ref = upload_to_postiz(p)
-        if not ref:
-            return False
-        image_refs.append({
-            "id": ref["id"],
-            "path": ref["path"],
-            "alt": None,
-            "thumbnail": None,
-            "thumbnailTimestamp": None,
-        })
 
-    target_id = integration_id or TIKTOK_INTEGRATION_ID
-    return post_carousel_to_tiktok(image_refs, target_id, debug=debug)
+    # Legacy Postiz path (custom-story account or explicit override)
+    if integration_id is not None:
+        print("\n📤 Uploading to Postiz (legacy)...")
+        image_refs = []
+        for p in slide_paths:
+            ref = _upload_to_postiz(p)
+            if not ref:
+                return False
+            image_refs.append({
+                "id": ref["id"],
+                "path": ref["path"],
+                "alt": None,
+                "thumbnail": None,
+                "thumbnailTimestamp": None,
+            })
+        return _post_carousel_via_postiz(image_refs, integration_id, caption=caption, debug=debug)
+
+    # Default Postfast path
+    print("\n📤 Uploading to Postfast...")
+    social_media_id = get_social_media_id(POSTFAST_CHANNEL)
+    if not social_media_id:
+        return False
+
+    keys = []
+    for p in slide_paths:
+        key = upload_to_postfast(p)
+        if not key:
+            return False
+        keys.append(key)
+        print(f"   ✓ Uploaded {os.path.basename(p)}")
+
+    return post_carousel_via_postfast(keys, social_media_id, caption=caption, debug=debug)
 
 
 def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Upload carousel slides to TikTok as draft via Postiz"
+        description="Upload carousel slides to TikTok via Postfast (default) or Postiz (legacy)"
     )
     parser.add_argument(
         "slides",
@@ -190,11 +330,11 @@ def main():
     parser.add_argument(
         "--debug",
         action="store_true",
-        help="Print the exact JSON payload sent to Postiz",
+        help="Print the exact JSON payload sent to the API",
     )
     parser.add_argument(
         "--integration-id",
-        help="Override the default TikTok integration ID",
+        help="Use Postiz (legacy) with this integration ID instead of Postfast",
     )
     args = parser.parse_args()
 

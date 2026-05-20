@@ -1,15 +1,14 @@
 # Staged AI - Repository Usage Guide
 
-This repository contains tools to generate, reimagine, and upload interior design content for TikTok.
+Tools to generate, reimagine, and upload interior design content for TikTok.
 
-## 🛠️ Setup
+## Setup
 
-1. **Environment**: Ensure you have Python 3.10+ installed.
-2. **Install Dependencies**:
+1. **Install Dependencies**:
    ```bash
    pip install -r requirements.txt
    ```
-3. **Configuration**: Create a `.env` file with the following keys:
+2. **Configuration**: Create a `.env` file:
    ```env
    GEMINI_API_KEY=your_gemini_key
    POSTIZ_API_KEY=your_postiz_key
@@ -18,86 +17,116 @@ This repository contains tools to generate, reimagine, and upload interior desig
 
 ---
 
-## 🚀 Scripts Overview
+## Content Pipelines
 
-### 1. `main.py` (The All-in-One Pipeline)
-**Use this for the daily workflow.** It runs the full process: Reimagine -> Edit (Overlays) -> Upload to TikTok.
+There are three content formats, each with a different starting image and reimagine strategy.
 
-**Usage:**
-```bash
-# Standard Mode: Reimage a room in 5 different interior styles
-python main.py path/to/image.jpg
+### Pipeline 1 — Style Reimagine (default)
 
-# Automatic Mode: Generate a random "problem space" image first, then run pipeline
-python main.py
+A photo of a lived-in room, reimagined in 5 distinct interior design styles. The hook is "what if this room looked completely different?"
 
-# Automatic Mode (Specific Space): Generate an "alcove" image first
-python main.py --space alcove
-
-# Fill Mode: Brainstorm 5 ways to fill an empty space
-python main.py path/to/empty_space.jpg -f
-
-# Skip prompts (Auto-confirm)
-python main.py path/to/image.jpg -y
+```
+original.py (no flag)  →  main.py <image>
 ```
 
-### 2. `original.py` (Source Image Generator)
-Generates photorealistic "problem space" images (empty corners, attics, etc.) to use as input for `main.py`.
-
-**Usage:**
 ```bash
-# Generate 1 random empty space image
+# Step 1: generate source image (or bring your own)
+python original.py
+python original.py -n 3        # generate 3 to pick from
+
+# Step 2: run pipeline
+python main.py original_room_<timestamp>.png
+python main.py original_room_<timestamp>.png -y   # skip approval prompts
+```
+
+---
+
+### Pipeline 2 — Story (--custom)
+
+Same as Pipeline 1, but slide captions are AI-generated narrative text — the format is someone showing a skeptical family member (mom, dad, roommate) the AI redesigns. One style doesn't land, one does.
+
+```
+original.py (no flag)  →  main.py <image> --custom
+```
+
+```bash
+# Step 1: generate source image (or bring your own)
 python original.py
 
-# Generate a specific type (e.g., attic_nook, alcove)
-python original.py --space attic_nook
-
-# Generate 3 images
-python original.py -n 3
-
-# List all available space types
-python original.py --list
+# Step 2: run pipeline with story captions
+python main.py original_room_<timestamp>.png --custom
 ```
 
-### 3. `reimagine.py` (Generation Only)
-Runs only the generation step (Gemini). Useful for testing prompts or concepts without creating final slides/uploading.
+---
 
-**Modes:**
-*   **Standard Mode (No flag):** Completely transforms the room's interior design style (e.g., changes the vibe to "Modern Minimalist" or "Industrial Chic") while keeping the structural shell (walls, windows) intact.
-*   **Fill Mode (`-f`):** Keeps the existing room style but fills empty spaces with specific furniture or decor concepts (e.g., "Add a cozy reading nook" or "Install a home bar").
+### Pipeline 3 — Fill Ideas (-f)
 
-**Usage:**
-```bash
-# Standard Mode: Reimagine in 2 styles
-python reimagine.py path/to/image.jpg
+A photo of an awkward, undefined nook or empty corner shown next to 5 creative ways to fill it. The hook is "what on earth do I do with this space?"
 
-# Fill Mode: Brainstorm 3 fill ideas
-python reimagine.py path/to/image.jpg -f
+```
+original.py --fill  →  main.py <image> -f
 ```
 
-### 4. `upload.py` (Upload Only)
-Uploads pre-made images to TikTok as a draft carousel via Postiz.
-
-**Usage:**
 ```bash
-# Upload specific files
+# Step 1: generate a problem-space image (or bring your own)
+python original.py --fill
+python original.py --fill --space confusing_alcove   # specific space type
+python original.py --fill -n 3                       # 3 options to pick from
+python original.py --list                            # see all space types
+
+# Step 2: run fill pipeline
+python main.py original_<space>_<timestamp>.png -f
+```
+
+---
+
+## Auto-Generation (skip Step 1)
+
+`main.py` can generate the source image automatically if no image path is provided:
+
+```bash
+python main.py                          # generate room → style pipeline
+python main.py --custom                 # generate room → story pipeline
+python main.py -f                       # generate problem space → fill pipeline
+python main.py -f --space dormer_nook   # specific space → fill pipeline
+python main.py -y                       # any of the above, skip all prompts
+```
+
+---
+
+## Individual Scripts
+
+### `original.py` — Source Image Generator
+
+```bash
+python original.py              # 1 photorealistic room (for style/story pipelines)
+python original.py -n 3         # 3 rooms to pick from
+python original.py --fill       # 1 random problem-space nook (for fill pipeline)
+python original.py --fill --space bay_window_nook
+python original.py --fill -n 3
+python original.py --list       # list all problem-space types
+```
+
+### `reimagine.py` — Generation Only (no upload)
+
+Runs only the Gemini image generation step. Useful for previewing output without creating slides or uploading.
+
+```bash
+python reimagine.py path/to/image.jpg        # style mode: 2 reimagined styles
+python reimagine.py path/to/image.jpg -f     # fill mode: 3 fill ideas
+```
+
+### `upload.py` — Upload Pre-made Slides
+
+```bash
 python upload.py slide1.jpg slide2.jpg slide3.jpg
-
-# Upload all .jpg files from a directory (sorted by name)
 python upload.py --from-dir ./carousel_output/slides/
 ```
 
-### 5. `generate_styles.py` (Admin / DB Update)
-Used to research and add new interior design styles to the Firebase Remote Config database.
+### `generate_styles.py` — Admin / Firebase Update
 
-**Usage:**
 ```bash
-# Generate new styles from a text file (one style per line)
 python generate_styles.py new_styles.txt
-
-# Generate AND publish to Firebase
 python generate_styles.py new_styles.txt --publish
-
-# Publish existing config only (no generation)
 python generate_styles.py --publish-only
 ```
