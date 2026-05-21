@@ -1,0 +1,87 @@
+name: Story Carousel Pipeline
+
+# Scheduled workflows run from the default branch (main).
+# Two UTC crons for 11:00 AM and 4:00 PM Eastern (currently EDT/UTC-4).
+on:
+  schedule:
+    - cron: "0 15 * * *" # 11:00 AM Eastern (currently EDT)
+    - cron: "0 20 * * *" # 4:00 PM Eastern (currently EDT)
+  workflow_dispatch:
+
+concurrency:
+  group: story-carousel
+  cancel-in-progress: false
+
+env:
+  NTFY_TOPIC: stagedai-story-carousel
+
+jobs:
+  story-carousel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Log Eastern time for debugging
+        run: |
+          export TZ=America/New_York
+          echo "Running at $(date +%H:%M) Eastern ($(date +%Z))"
+
+      - name: Run story pipeline (auto-generate room, upload to @stacy.designs draft)
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ZERNIO_API_KEY: ${{ secrets.ZERNIO_API_KEY }}
+        run: python main.py --custom -y --tiktok-account 6a0f1fde520992756d93d5dc
+
+      - name: Upload debug artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-debug-${{ github.run_id }}
+          path: |
+            carousel_*/
+            generated_source_*
+          if-no-files-found: ignore
+
+  notify-success:
+    needs: story-carousel
+    if: success() && needs.story-carousel.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: ntfy — success
+        run: |
+          curl -sS -f \
+            -H "Authorization: Bearer ${{ secrets.NTFY_API_KEY }}" \
+            -H "Title: TikTok story carousel posted" \
+            -H "Tags: white_check_mark" \
+            -H "Priority: default" \
+            -d "Story pipeline finished (@stacy.designs). TikTok inbox draft should be ready.
+          Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            "https://ntfy.sh/${{ env.NTFY_TOPIC }}"
+
+  notify-failure:
+    needs: story-carousel
+    if: failure() && needs.story-carousel.result == 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - name: ntfy — failure
+        run: |
+          echo "::error::Story carousel pipeline failed."
+          curl -sS -f \
+            -H "Authorization: Bearer ${{ secrets.NTFY_API_KEY }}" \
+            -H "Title: TikTok story carousel FAILED" \
+            -H "Tags: rotating_light" \
+            -H "Priority: urgent" \
+            -d "Story pipeline failed (@stacy.designs). Check Actions logs.
+          Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            "https://ntfy.sh/${{ env.NTFY_TOPIC }}" || true

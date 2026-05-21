@@ -54,7 +54,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def run_pipeline(image_path: str, fill_mode: bool = False, skip_approval: bool = False, captions: list[str] = None, use_custom_story: bool = False, source_image_path: str = None) -> bool:
+def run_pipeline(image_path: str, fill_mode: bool = False, skip_approval: bool = False, captions: list[str] = None, use_custom_story: bool = False, source_image_path: str = None, tiktok_account: str | None = None) -> bool:
     """Orchestrate reimagine -> edit -> (confirm) -> upload."""
     
     try:
@@ -128,7 +128,7 @@ def run_pipeline(image_path: str, fill_mode: bool = False, skip_approval: bool =
         # --- Step 4: Upload ---
         logger.info("📤 [Stage 3/3] Upload to TikTok - Starting...")
         try:
-            result = upload_carousel(slide_paths, fill_mode=fill_mode)
+            result = upload_carousel(slide_paths, fill_mode=fill_mode, account_id=tiktok_account)
             if result:
                 logger.info("✅ [Stage 3/3] Upload complete!")
             else:
@@ -200,6 +200,11 @@ Auto-generation (omit image_path):
         action="store_true",
         help="Generate a story for fill mode (use with --fill). Ignored without --fill.",
     )
+    parser.add_argument(
+        "--tiktok-account",
+        default=None,
+        help="Zernio TikTok account ID for upload (default: @kim.designs8)",
+    )
     args = parser.parse_args()
 
     # Logic: If no image path, generate one first
@@ -259,6 +264,7 @@ Auto-generation (omit image_path):
         captions=args.captions,
         use_custom_story=args.custom or use_fill_story,
         source_image_path=pipeline_image_path,
+        tiktok_account=args.tiktok_account,
     )
     sys.exit(0 if success else 1)
 

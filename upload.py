@@ -30,7 +30,7 @@ if not ZERNIO_API_KEY:
     raise ValueError("ZERNIO_API_KEY not found in .env")
 
 ZERNIO_BASE = "https://zernio.com/api/v1"
-TIKTOK_ACCOUNT_ID = "6a0dc3a8520992756d88c5ba"
+DEFAULT_TIKTOK_ACCOUNT_ID = "6a0dc3a8520992756d88c5ba"  # @kim.designs8
 PREFERRED_PRIVACY = "PUBLIC_TO_EVERYONE"
 SCHEDULE_DELAY_MINUTES = 2
 
@@ -38,67 +38,35 @@ SCHEDULE_DELAY_MINUTES = 2
 FILL_CAPTIONS = [
     {
         "title": "what do I even do with this corner",
-        "description": (
-            "this awkward nook has been sitting empty forever and I genuinely need help. "
-            "swipe through 5 different ways to fill it — which one would you actually do? "
-            "drop a number in the comments 👇 #homedecor #interiordesign #smallspaces #roommakeover"
-        ),
+        "description": "#homedecor #interiordesign #smallspaces #roommakeover"
     },
     {
         "title": "help this random nook is stressing me out",
-        "description": (
-            "every house has that one weird corner you never know what to do with. "
-            "I tried 5 fill ideas for this space — honest opinions only!! "
-            "1, 2, 3, 4, or 5? #interiordesign #homeinspo #awkwardspaces #decorideas"
-        ),
+        "description": "#interiordesign #homeinspo #awkwardspaces #decorideas"
     },
     {
         "title": "5 ways to fix this dead space",
-        "description": (
-            "POV: you finally decided to do something about the empty nook everyone ignores. "
-            "here are five creative fill ideas — tell me which vibe wins 🏠 "
-            "#homedecor #beforeandafter #spacedesign #cozyhome"
-        ),
+        "description": "#homedecor #beforeandafter #spacedesign #cozyhome"
     },
     {
         "title": "this empty corner needs a personality",
-        "description": (
-            "blank nook energy is real. I mocked up five ways to make this corner actually useful "
-            "and cute. which layout would you pick for your place? "
-            "#interiordesign #nookideas #homemakeover #designinspo"
-        ),
+        "description": "#interiordesign #nookideas #homemakeover #designinspo"
     },
     {
         "title": "nobody talks about awkward nooks",
-        "description": (
-            "the most underrated design problem: what goes in the weird leftover space?? "
-            "five fill concepts for this corner — vote your favorite in the comments "
-            "#smallspaces #homedecor #roomideas #interiorstyle"
-        ),
+        "description": "#smallspaces #homedecor #roomideas #interiorstyle"
     },
     {
         "title": "I cannot leave this corner empty anymore",
-        "description": (
-            "been walking past this dead zone for months. finally explored 5 ways to fill it — "
-            "some practical, some cozy, all better than nothing 😅 "
-            "help me choose!! #homedecor #interiordesign #emptycorner #decor"
-        ),
+        "description": "#homedecor #interiordesign #emptycorner #decor"
     },
     {
         "title": "pick a vibe for this wasted space",
-        "description": (
-            "turning an awkward alcove into something intentional. "
-            "swipe for five fill ideas — bookshelf nook, reading corner, plant wall, and more. "
-            "what would you do here? #interiordesign #homeinspo #alcove #roomrefresh"
-        ),
+        "description": "#interiordesign #homeinspo #alcove #roomrefresh"
     },
     {
         "title": "the nook that broke my brain",
-        "description": (
-            "why is the hardest design decision always the smallest space?? "
-            "five options to fill this corner — be brutally honest which one works "
-            "#homedecor #designhelp #smallspaceliving #interiorideas"
-        ),
+        "description": "#homedecor #designhelp #smallspaceliving #interiorideas"
     },
 ]
 
@@ -106,43 +74,23 @@ FILL_CAPTIONS = [
 STYLE_CAPTIONS = [
     {
         "title": "help me pick a room style",
-        "description": (
-            "same room, five completely different interior design styles. "
-            "I literally cannot choose — which one is your favorite? comment 1–5 👇 "
-            "#interiordesign #homedecor #roommakeover #designinspo"
-        ),
+        "description": "#interiordesign #homedecor #roommakeover #designinspo"
     },
     {
         "title": "which style would you live in",
-        "description": (
-            "reimagined one average room in five design directions. "
-            "modern, cozy, bold, minimal… which vibe wins? be honest!! "
-            "#interiordesign #beforeandafter #homeinspo #decor"
-        ),
+        "description": "#interiordesign #beforeandafter #homeinspo #decor"
     },
     {
         "title": "one room five totally different vibes",
-        "description": (
-            "the hardest part of decorating is committing to a style. "
-            "swipe through five looks for this space — tell me your top pick "
-            "#homedecor #interiordesign #roomideas #styleinspo"
-        ),
+        "description": "#homedecor #interiordesign #roomideas #styleinspo"
     },
     {
         "title": "I need help choosing a design direction",
-        "description": (
-            "what if this lived-in room looked completely different? "
-            "five style makeovers — rate them or pick a number in the comments "
-            "#interiordesign #homemakeover #designhelp #cozyhome"
-        ),
+        "description": "#interiordesign #homemakeover #designhelp #cozyhome"
     },
     {
         "title": "style 1 2 3 4 or 5",
-        "description": (
-            "obsessed with all of these but I can only pick one direction for real life. "
-            "help me decide which interior style to go with 🏠 "
-            "#homedecor #interiordesign #roomtransformation #aesthetic"
-        ),
+        "description": "#homedecor #interiordesign #roomtransformation #aesthetic"
     },
 ]
 
@@ -213,6 +161,7 @@ def post_carousel_via_zernio(
     title: str,
     description: str,
     privacy_level: str,
+    account_id: str,
     debug: bool = False,
 ) -> bool:
     """Schedule a TikTok photo carousel as an inbox draft (public when published)."""
@@ -224,7 +173,7 @@ def post_carousel_via_zernio(
     payload = {
         "content": title[:90],
         "mediaItems": [{"type": "image", "url": url} for url in media_urls],
-        "platforms": [{"platform": "tiktok", "accountId": TIKTOK_ACCOUNT_ID}],
+        "platforms": [{"platform": "tiktok", "accountId": account_id}],
         "tiktokSettings": {
             "privacy_level": privacy_level,
             "allow_comment": True,
@@ -277,9 +226,10 @@ def upload_carousel(
     title: str = "",
     description: str = "",
     fill_mode: bool = False,
-    **_kwargs,
+    account_id: str | None = None,
 ) -> bool:
     """Upload slides as a TikTok photo carousel draft via Zernio."""
+    account_id = account_id or DEFAULT_TIKTOK_ACCOUNT_ID
     if not slide_paths:
         print("❌ No slides to upload.")
         return False
@@ -294,8 +244,8 @@ def upload_carousel(
         title = title or auto_title
         description = description or auto_desc
 
-    print("\n📤 Uploading to Zernio...")
-    creator_info = get_tiktok_creator_info(TIKTOK_ACCOUNT_ID)
+    print(f"\n📤 Uploading to Zernio (account {account_id})...")
+    creator_info = get_tiktok_creator_info(account_id)
     if not creator_info:
         return False
 
@@ -312,7 +262,7 @@ def upload_carousel(
         print(f"   ✓ Uploaded {os.path.basename(p)}")
 
     return post_carousel_via_zernio(
-        media_urls, title, description, privacy_level, debug=debug
+        media_urls, title, description, privacy_level, account_id, debug=debug
     )
 
 
@@ -343,6 +293,11 @@ def main():
     )
     parser.add_argument("--title", help="Photo title (max 90 chars)")
     parser.add_argument("--description", help="Full carousel caption")
+    parser.add_argument(
+        "--tiktok-account",
+        default=DEFAULT_TIKTOK_ACCOUNT_ID,
+        help="Zernio TikTok account ID (default: @kim.designs8)",
+    )
     args = parser.parse_args()
 
     if args.from_dir:
@@ -361,6 +316,7 @@ def main():
         title=args.title or "",
         description=args.description or "",
         fill_mode=args.fill,
+        account_id=args.tiktok_account,
     )
     sys.exit(0 if success else 1)
 
