@@ -28,7 +28,7 @@ EMOJI_FONT_PATHS = [
     "C:/Windows/Fonts/seguiemj.ttf",  # Windows Segoe UI Emoji
     "/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf",  # Linux
 ]
-EMOJI = "\N{WHITE HEART}"
+EMOJI = "🤍"  # White heart emoji 
 EMOJI_FONT_SIZE = 40
 
 
@@ -37,10 +37,19 @@ def _get_emoji_font(size: int = EMOJI_FONT_SIZE):
     for path in EMOJI_FONT_PATHS:
         if Path(path).exists():
             try:
-                return ImageFont.truetype(path, size)
-            except OSError:
+                font = ImageFont.truetype(path, size)
+                # Test if the font can render our emoji
+                test_bbox = ImageDraw.Draw(Image.new('RGBA', (100, 100))).textbbox((0, 0), EMOJI, font=font)
+                if test_bbox[2] > test_bbox[0]:  # Width > 0 means glyph exists
+                    return font
+            except (OSError, Exception):
                 continue
-    return None
+    
+    # Fallback: try to use default font for simple heart characters
+    try:
+        return ImageFont.load_default()
+    except:
+        return None
 
 
 EMOJI_PATTERN = re.compile(r'([\U00010000-\U0010ffff\u2600-\u27bf\u2b50\u2b55\u231a\u231b\u23e9-\u23f3\u23f8-\u23fa\U0001f000-\U0001ffff])', flags=re.UNICODE)
@@ -201,7 +210,7 @@ def create_item_slide(
 
     tagline_text = "i made these images with the staged ai app "
     tagline_full = f"{tagline_text}{EMOJI}"
-    tagline_fallback = f"{tagline_text}\u2661"  # ♡ if emoji font unavailable
+    tagline_fallback = f"{tagline_text}♡"  # Simple heart if emoji font unavailable
 
     if force_text:
         full_text = force_text.replace("\\n", "\n")
@@ -236,14 +245,27 @@ def create_item_slide(
             start_y += TAGLINE_EXTRA_OFFSET
 
         if is_tagline and emoji_font and line == tagline_full:
-            b_text = draw.textbbox((0, 0), tagline_text, font=font_small)
-            b_emoji = draw.textbbox((0, 0), EMOJI, font=emoji_font)
-            tw_text = b_text[2] - b_text[0]
-            tw_emoji = b_emoji[2] - b_emoji[0]
-            total_w = tw_text + tw_emoji
-            tx = (TARGET_SIZE[0] - total_w) // 2 - b_text[0]
-            draw.text((tx, start_y), tagline_text, fill="white", font=font_small, stroke_width=5, stroke_fill="black")
-            draw.text((tx + tw_text, start_y), EMOJI, font=emoji_font, embedded_color=True)
+            try:
+                b_text = draw.textbbox((0, 0), tagline_text, font=font_small)
+                b_emoji = draw.textbbox((0, 0), EMOJI, font=emoji_font)
+                tw_text = b_text[2] - b_text[0]
+                tw_emoji = b_emoji[2] - b_emoji[0]
+                
+                # Check if emoji actually rendered (has width)
+                if tw_emoji > 0:
+                    total_w = tw_text + tw_emoji
+                    tx = (TARGET_SIZE[0] - total_w) // 2 - b_text[0]
+                    draw.text((tx, start_y), tagline_text, fill="white", font=font_small, stroke_width=5, stroke_fill="black")
+                    draw.text((tx + tw_text, start_y), EMOJI, font=emoji_font, embedded_color=True)
+                else:
+                    raise Exception("Emoji has no width")
+            except:
+                # Fallback to simple heart with regular font
+                fallback_line = tagline_fallback
+                b = draw.textbbox((0, 0), fallback_line, font=font_small)
+                tw = b[2] - b[0]
+                tx = (TARGET_SIZE[0] - tw) // 2 - b[0]
+                draw.text((tx, start_y), fallback_line, fill="white", font=font_small, stroke_width=5, stroke_fill="black")
 
         elif is_tagline:
             b = draw.textbbox((0, 0), tagline_fallback, font=font_small)
