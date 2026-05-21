@@ -12,9 +12,6 @@ concurrency:
   group: fill-carousel
   cancel-in-progress: false
 
-env:
-  NTFY_TOPIC: stagedai-fill-carousel
-
 jobs:
   fill-carousel:
     runs-on: ubuntu-latest
@@ -58,30 +55,31 @@ jobs:
     if: success() && needs.fill-carousel.result == 'success'
     runs-on: ubuntu-latest
     steps:
-      - name: ntfy — success
+      - name: Pushover — success
         run: |
           curl -sS -f \
-            -H "Authorization: Bearer ${{ secrets.NTFY_API_KEY }}" \
-            -H "Title: TikTok fill carousel posted" \
-            -H "Tags: white_check_mark" \
-            -H "Priority: default" \
-            -d "Fill pipeline finished. TikTok inbox draft should be ready.
-          Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-            "https://ntfy.sh/${{ env.NTFY_TOPIC }}"
+            --form-string "token=${{ secrets.PUSHOVER_API_KEY }}" \
+            --form-string "user=${{ secrets.PUSHOVER_USER_KEY }}" \
+            --form-string "title=TikTok fill carousel posted" \
+            --form-string "message=Fill pipeline finished. TikTok inbox draft should be ready." \
+            --form-string "url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --form-string "url_title=View run" \
+            https://api.pushover.net/1/messages.json
 
   notify-failure:
     needs: fill-carousel
     if: failure() && needs.fill-carousel.result == 'failure'
     runs-on: ubuntu-latest
     steps:
-      - name: ntfy — failure
+      - name: Pushover — failure
         run: |
           echo "::error::Fill carousel pipeline failed."
           curl -sS -f \
-            -H "Authorization: Bearer ${{ secrets.NTFY_API_KEY }}" \
-            -H "Title: TikTok fill carousel FAILED" \
-            -H "Tags: rotating_light" \
-            -H "Priority: urgent" \
-            -d "Fill pipeline failed. Check Actions logs.
-          Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-            "https://ntfy.sh/${{ env.NTFY_TOPIC }}" || true
+            --form-string "token=${{ secrets.PUSHOVER_API_KEY }}" \
+            --form-string "user=${{ secrets.PUSHOVER_USER_KEY }}" \
+            --form-string "title=TikTok fill carousel FAILED" \
+            --form-string "message=Fill pipeline failed. Check Actions logs." \
+            --form-string "priority=1" \
+            --form-string "url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --form-string "url_title=View run" \
+            https://api.pushover.net/1/messages.json || true

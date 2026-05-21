@@ -22,7 +22,7 @@ Add a second scheduled GitHub Actions workflow that runs the existing story pipe
 | Workflow | `fill-carousel.yml` | `story-carousel.yml` |
 | Command | `python main.py -f -y` | `python main.py --custom -y --tiktok-account 6a0f1fde520992756d93d5dc` |
 | Account | Kim (default) | Stacy |
-| ntfy topic | `stagedai-fill-carousel` | `stagedai-story-carousel` |
+| Pushover | fill + story workflows | fill + story workflows |
 | Concurrency | `fill-carousel` | `story-carousel` |
 
 ## Code Changes
@@ -45,7 +45,7 @@ Add a second scheduled GitHub Actions workflow that runs the existing story pipe
 
 ## Secrets
 
-No new secrets. Reuses `GEMINI_API_KEY`, `ZERNIO_API_KEY`, `NTFY_API_KEY`.
+No new secrets. Reuses `GEMINI_API_KEY`, `ZERNIO_API_KEY`, `PUSHOVER_API_KEY`, `PUSHOVER_USER_KEY`.
 
 ## Testing
 

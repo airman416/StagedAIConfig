@@ -25,9 +25,10 @@ The workflow [`.github/workflows/fill-carousel.yml`](.github/workflows/fill-caro
 |--------|---------|
 | `GEMINI_API_KEY` | Image generation |
 | `ZERNIO_API_KEY` | TikTok carousel upload |
-| `NTFY_API_KEY` | Push notifications (ntfy access token, `tk_...`) |
+| `PUSHOVER_API_KEY` | Pushover application API token (from [app registration](https://pushover.net/apps/build)) |
+| `PUSHOVER_USER_KEY` | Pushover user key (from your [dashboard](https://pushover.net/)) |
 
-**ntfy:** Subscribe to topic **`stagedai-fill-carousel`** in the [ntfy app](https://ntfy.sh/app) (or open `https://ntfy.sh/stagedai-fill-carousel`). You get a push on every successful run and on failures.
+**Pushover:** Install the [Pushover app](https://pushover.net/clients) on your phone. Workflow success and failure jobs POST to the [Pushover Message API](https://pushover.net/api). You get a push on every successful run and on failures (high priority).
 
 **Manual run:** Actions → *Fill Carousel Pipeline* → *Run workflow*.
 
