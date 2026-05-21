@@ -1,16 +1,11 @@
 name: Fill Carousel Pipeline
 
-# Scheduled workflows run from the default branch (main). Code is merged from custom.
-# Cron is UTC; a time gate ensures runs only at 11:00 and 16:00 America/New_York (DST-aware).
+# Scheduled workflows run from the default branch (main).
+# Two UTC crons for 11:00 AM and 4:00 PM Eastern (currently EDT/UTC-4).
 on:
   schedule:
-    # Four slots for EDT (UTC-4); two extra for EST (UTC-5). Gate keeps only 11:00 & 16:00 Eastern.
-    - cron: "5 14 * * *"
-    - cron: "5 15 * * *"
-    - cron: "5 16 * * *"
-    - cron: "5 19 * * *"
-    - cron: "5 20 * * *"
-    - cron: "5 21 * * *"
+    - cron: "0 15 * * *" # 11:00 AM Eastern (currently EDT)
+    - cron: "0 20 * * *" # 4:00 PM Eastern (currently EDT)
   workflow_dispatch:
 
 concurrency:
@@ -21,32 +16,7 @@ env:
   NTFY_TOPIC: stagedai-fill-carousel
 
 jobs:
-  eastern-time-gate:
-    runs-on: ubuntu-latest
-    outputs:
-      should_run: ${{ steps.check.outputs.should_run }}
-    steps:
-      - name: Check 11:00 or 16:00 Eastern
-        id: check
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "should_run=true" >> "$GITHUB_OUTPUT"
-            echo "Manual trigger — running pipeline."
-            exit 0
-          fi
-          export TZ=America/New_York
-          hour=$(date +%H)
-          echo "America/New_York local hour: $hour"
-          if [ "$hour" = "11" ] || [ "$hour" = "16" ]; then
-            echo "should_run=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "should_run=false" >> "$GITHUB_OUTPUT"
-            echo "Skipping — not 11:00 or 16:00 Eastern."
-          fi
-
   fill-carousel:
-    needs: eastern-time-gate
-    if: needs.eastern-time-gate.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -61,6 +31,11 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
+
+      - name: Log Eastern time for debugging
+        run: |
+          export TZ=America/New_York
+          echo "Running at $(date +%H:%M) Eastern ($(date +%Z))"
 
       - name: Run fill pipeline (random nook, upload to TikTok draft)
         env:
@@ -80,7 +55,7 @@ jobs:
 
   notify-success:
     needs: fill-carousel
-    if: success()
+    if: success() && needs.fill-carousel.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: ntfy — success
@@ -96,7 +71,7 @@ jobs:
 
   notify-failure:
     needs: fill-carousel
-    if: failure()
+    if: failure() && needs.fill-carousel.result == 'failure'
     runs-on: ubuntu-latest
     steps:
       - name: ntfy — failure
